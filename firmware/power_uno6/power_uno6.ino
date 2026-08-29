@@ -38,25 +38,7 @@ INA226 ina226Battery2(kIna226Address);
 // has one channel active at a time, so every I2C transaction with
 // either INA226 (including this one) has to be preceded by selecting
 // the right channel, not just once at startup.
-//
-// Out-parameters here, not a returned struct - a real Arduino IDE/
-// arduino-cli bug (not this project's own mistake, and not fixed as
-// of writing: see arduino/arduino-cli#2696 and arduino/Arduino#8014,
-// #8050, both open issues going back years), where the IDE's
-// automatic function-prototype generation inserts each function's
-// auto-generated prototype immediately after the sketch's #include
-// lines, before any type declared later in the file - including a
-// custom struct defined and used correctly, in the right order,
-// everywhere a human reads the file top to bottom. A struct return
-// type here would compile fine with a standard C++ toolchain and
-// fail specifically under the Arduino IDE's own preprocessing step
-// with "'BatteryReading' does not name a type", pointing at this
-// function's own definition rather than the real cause. Sidestepping
-// entirely by keeping the signature to types already known before
-// any prototype could reference them, rather than moving the struct
-// to a separate header (the officially documented workaround) and
-// introducing a multi-file sketch structure no other board here
-// uses.
+
 void readBattery(uint8_t muxChannel, INA226 &ina, int32_t &voltageMv, int32_t &currentMa) {
   tcaSelectChannel(muxChannel);
   voltageMv = (int32_t)lround(ina.getBusVoltage_mV());

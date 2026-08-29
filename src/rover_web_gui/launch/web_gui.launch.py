@@ -37,7 +37,7 @@ def generate_launch_description() -> LaunchDescription:
                 executable="web_gui_node",
                 name="rover_web_gui",
                 parameters=[shared_sensitivity_config, shared_mast_config, shared_antenna_config],
-                arguments=["--host", "0.0.0.0", "--port", LaunchConfiguration("port")],
+                arguments=["--host", "10.0.0.10", "--port", LaunchConfiguration("port")],
                 output="screen",
             ),
         ]
