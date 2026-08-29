@@ -50,19 +50,6 @@ hand-editing placeholders (including an important caveat about the
 three Mega 2560 boards possibly sharing an identical or empty USB
 serial number).
 
-**Wiring diagrams** (`docs/diagrams/`) — system-level connection maps
-and per-board pinouts, generated directly from the actual firmware
-constants (`kMotorPwm`, `kStepPin`, etc.) rather than drawn from
-memory:
-
-| Diagram | Covers |
-|---|---|
-| [`01_system_overview_boards.svg`](docs/diagrams/01_system_overview_boards.svg) | Host → four Arduino boards, USB serial |
-| [`02_system_overview_sensors.svg`](docs/diagrams/02_system_overview_sensors.svg) | Host → IMU, GPS, LIDAR, cameras (no Arduino) |
-| [`03_base_mega1_wiring.svg`](docs/diagrams/03_base_mega1_wiring.svg) | 6 drive motors (3x DRI0002), 4 steering servos, ML/MR encoders, FZ0430 voltage sensor |
-| [`04_arm_mega2_wiring.svg`](docs/diagrams/04_arm_mega2_wiring.svg) | 5 joint steppers (A4988), shared enable, 5 limit switches, FZ0430 voltage sensor |
-| [`05_mast_uno3_wiring.svg`](docs/diagrams/05_mast_uno3_wiring.svg) | Head yaw/pitch steppers (TB6600 driver) with calibration switches, HW-039 lift driver, 4 limit switches, FZ0430 voltage sensor |
-| [`06_microscope_uno4_wiring.svg`](docs/diagrams/06_microscope_uno4_wiring.svg) | Focus stepper, LED, lens cover servo |
 
 These show pin groupings and counts, not exact per-pin schematics —
 cross-reference the exact pin constants in each board's `.ino` file
