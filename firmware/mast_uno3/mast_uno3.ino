@@ -1,4 +1,109 @@
 // mast_uno3.ino
+//
+// Arduino Uno #3 - mast controller (previously a Mega; replaced with
+// an Uno, which is why every pin below is a new assignment even where
+// the function is unchanged - the Uno's usable digital range is just
+// D2-D13 (D0/D1 are Serial RX/TX, needed for the host link), nothing
+// like the Mega's headroom).
+//   * 2x NEMA17 + TB6600 for the head's yaw/pitch axes (replaces the
+//     original A4988 driver assumption), each with its own
+//     calibration (limit) switch, mounted at that axis's minimum
+//     (most-negative) bound - homing seeks the switch, then treats
+//     that position as the axis's minimum (-170 deg yaw, -180 deg
+//     pitch) rather than zero, then drives to the true zero (center
+//     of travel) from there - see serviceHoming()/servicePostCalibration()
+//     for the full sequence. Steppers have no absolute position
+//     feedback of their own, hence needing this at all. See
+//     arm_mega2.ino for the original version of the underlying
+//     seek-a-switch homing pattern; mirrored here for 2 axes instead
+//     of 5, with the offset-then-center step added on top.
+//     TB6600's PUL/DIR inputs are functionally equivalent to
+//     STEP/DIR - AccelStepper::DRIVER mode just toggles a pin for
+//     each pulse either way, so kStepPin/kDirPin below work
+//     unchanged. What's genuinely different: TB6600 inputs are
+//     opto-isolated (PUL+/PUL-/DIR+/DIR-/ENA+/ENA-, not simple direct
+//     logic pins) and its microstepping/current limit are set via DIP
+//     switches on the driver itself, not firmware - kStepsPerDegYaw/
+//     Pitch below need to match whatever microstepping the switches
+//     are actually set to, the same as any other driver swap. Wiring
+//     assumed here is the standard common-anode setup (PUL+/DIR+/
+//     ENA+ tied to +5V, PUL-/DIR-/ENA- driven by the Arduino pins) -
+//     if wired common-cathode instead, the enable polarity below is
+//     backwards and needs flipping.
+//     Added explicit enable control as part of this swap
+//     (kHeadEnablePin) - the previous A4988 wiring had no enable pin
+//     driven by firmware at all, relying on whatever that specific
+//     breakout's floating-EN default happened to be. TB6600's
+//     opto-isolated ENA input is less forgiving of being left
+//     floating than that, and explicit control is worth having
+//     regardless - this now commits the very last available Uno pin
+//     (13), so the board's digital pin budget is fully spent: 12 of
+//     12 usable pins (D2-D13) in use, none spare.
+//   * 1x brushed DC lift motor that erects the mast from a horizontal
+//     transport position to a vertical service position, driven
+//     through an HW-039 (dual BTS7960B half-bridge) driver - replaces
+//     the previous generic 2-direction-pin H-bridge. HW-039's native
+//     interface is RPWM/LPWM (a separate PWM pin per direction, not
+//     one shared PWM + direction-select pin), simplified here to a
+//     single shared enable pin (R_EN/L_EN tied together) rather than
+//     wiring both independently, to fit the Uno's tight pin budget -
+//     R_IS/L_IS (current sense) are left unconnected, not needed for
+//     this application.
+//   * 2x limit switches bound the lift travel: stowed (horizontal/
+//     transport) and erect (vertical/service) - unrelated to the new
+//     yaw/pitch calibration switches above, and don't need homing:
+//     the lift is a plain DC motor with no step-relative position to
+//     zero, just a directly-read "which limit (if any) is currently
+//     triggered" state.
+//   * DS18B20 temperature sensor, TO-92, 1-Wire on a single digital
+//     pin (kDs18b20DataPin = A4, reusing the Uno's former I2C SDA pin)
+//     - genuinely free despite the digital pin budget above being
+//     fully spent (D2-D13, 12 of 12), since A4 is a separate pin pool
+//     entirely, not part of that count. See base_mega1.ino's own copy
+//     of this sensor for the full reasoning (external pull-up
+//     requirement, non-blocking read state machine, sentinel
+//     convention); identical here, just on this Uno's own former SDA
+//     pin rather than a Mega's.
+//   * Cooling fan via a generic N-channel MOSFET driver module (e.g.
+//     IRF520-style breakout: SIG/VCC/GND on the control side, V+/V-
+//     screw terminals on the load side) - a LOW-SIDE switch, worth
+//     being explicit about since it's a common wiring mix-up: the
+//     fan's positive lead goes directly to the external supply
+//     (V+/Vin, always on), and the MOSFET switches the fan's
+//     *negative* lead (through V-/OUT) to ground - not the fan's
+//     positive side the way a more intuitive high-side design might
+//     suggest. VCC on the module's control header only powers its
+//     own onboard status LED and can be left disconnected; only GND
+//     and SIG are actually required for switching.
+//
+//     SIG needs a PWM-capable pin for variable speed, but the Uno's
+//     entire hardware-PWM budget (D3/D5/D6/D9/D10/D11) was already
+//     fully committed by the yaw/pitch/lift functions above before
+//     this was added - kFanPwmPin (A2) runs a simple millis()-based
+//     software PWM instead (see updateFanPwm()), which the MOSFET
+//     module doesn't distinguish from hardware PWM in any way that
+//     matters for a slowly-responding load like a fan.
+//
+//     Entirely automatic, not operator-commanded: speed is a function
+//     of the DS18B20 reading above (updateFanControl()), ramping
+//     between kFanOnTempDeciC and kFanMaxTempDeciC with hysteresis
+//     against kFanOffTempDeciC to avoid rapid on/off cycling right at
+//     the threshold. All threshold values are placeholders - bench-
+//     tune once the real enclosure's actual thermal behavior is
+//     known, the same as every other uncalibrated constant in this
+//     project. If the temperature sensor itself isn't responding
+//     (cachedTemperatureDeciC at its own sentinel), the fan defaults
+//     to running rather than off - a deliberate fail-toward-cooling
+//     choice: unnecessary fan noise is a minor cost, an overheating
+//     board with no way to know it's overheating is a real one.
+//
+// Talks to the ROS 2 `rover_mast` bridge node using the shared
+// RoverProtocol framing. Requires the AccelStepper library, "OneWire"
+// (by Paul Stoffregen), and "DallasTemperature" (by Miles Burton) -
+// see base_mega1.ino's own header comment for the DallasTemperature
+// LGPL-2.1 licensing note. The fan control itself needs no additional
+// library - plain digitalWrite()/millis(), the same as everything
+// else in this file that isn't a stepper or 1-Wire device.
 
 #include <AccelStepper.h>
 #include <OneWire.h>
@@ -64,9 +169,9 @@ constexpr unsigned long kFanPwmPeriodMs = 20;
 // stays on until temperature drops to the lower threshold, not the
 // same one it turned on at, to avoid rapid on/off cycling right at a
 // single boundary.
-constexpr int32_t kFanOnTempDeciC = 320;    // 32.0 deg C - start spinning up
+constexpr int32_t kFanOnTempDeciC = 350;    // 35.0 deg C - start spinning up
 constexpr int32_t kFanOffTempDeciC = 300;   // 30.0 deg C - stop (lower than ON, not the same value)
-constexpr int32_t kFanMaxTempDeciC = 350;   // 35.0 deg C - full speed at/above this
+constexpr int32_t kFanMaxTempDeciC = 500;   // 50.0 deg C - full speed at/above this
 // Many small DC fans won't reliably start or stay spinning much below
 // this - once the fan is running at all, its duty cycle is clamped to
 // at least this, rather than ramping smoothly down to a near-zero
@@ -86,12 +191,12 @@ AccelStepper headAxes[kNumHeadAxes] = {
 // A4988 breakouts that expose MS1/MS2/MS3 pins) - update this if the
 // DIP switches are ever changed, the same way arm_topology.yaml's
 // steps_per_joint_rev has to track the arm's actual gearing.
-constexpr float kStepsPerDegYaw = 341.3f;   // 200 * 16 / 360 * 5:1 gear, e.g.
-constexpr float kStepsPerDegPitch = 341.3f;
+constexpr float kStepsPerDegYaw = 44.4f;   // 200 * 16 / 360 * 5:1 gear, e.g.
+constexpr float kStepsPerDegPitch = 44.4f;
 
-constexpr float kMaxSpeedStepsPerSec = 2000.0f;
+constexpr float kMaxSpeedStepsPerSec = 800.0f;
 constexpr float kAccelStepsPerSec2 = 1600.0f;
-constexpr float kHomingSpeedStepsPerSec = 2000.0f;
+constexpr float kHomingSpeedStepsPerSec = 200.0f;
 // Safety cutoff, same reasoning as arm_mega2.ino's kHomingMaxTravelSteps:
 // abort homing an axis that travels this many steps without ever
 // triggering its limit switch, rather than driving it indefinitely.
@@ -103,7 +208,7 @@ constexpr float kHomingSpeedStepsPerSec = 2000.0f;
 // over pitch's full range with room to spare, and the same single
 // constant covers yaw's smaller range with even more margin. Worst-
 // case time to abort a genuine fault: ~22200 / 200 =~ 111 seconds.
-constexpr long kHomingMaxTravelSteps = 222000;
+constexpr long kHomingMaxTravelSteps = 22200;
 
 // Each axis's minimum (most-negative) bound - where its limit switch
 // physically is. Homing seeks the switch, then recognizes that
@@ -113,7 +218,7 @@ constexpr long kHomingMaxTravelSteps = 222000;
 // be if the switch were incorrectly treated as zero already. See
 // servicePostCalibration() for that move.
 constexpr float kYawMinDeg = -170.0f;
-constexpr float kPitchMinDeg = -90.0f;
+constexpr float kPitchMinDeg = -180.0f;
 
 enum LiftState : int8_t { STATE_UNKNOWN = 0, STATE_TRANSPORT = 1, STATE_SERVICE = 2, STATE_MOVING = 3 };
 enum LiftMode : int8_t { LIFT_STOW = -1, LIFT_HOLD = 0, LIFT_ERECT = 1 };
@@ -126,7 +231,7 @@ bool homingInProgress = false;
 int8_t homingAxisIndex = -1;
 long homingStartPosition = 0;
 
-bool headDriversEnabled = true;
+bool headDriversEnabled = false;
 
 OneWire oneWire(kDs18b20DataPin);
 DallasTemperature ds18b20(&oneWire);

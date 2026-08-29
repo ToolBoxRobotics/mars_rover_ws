@@ -5,7 +5,14 @@ Frame types
   'A' (host -> Mega2): joint-space position command
       fields = [j1, j2, j3, j4, j5, enable]
       j*     = absolute target position in motor steps, relative to
-               each joint's homed zero
+               each joint's own true center (absolute step 0 - see the
+               'Z' frame below for how homing establishes this).
+               Clamped to that joint's own [kMinDeg, kMaxDeg]
+               operational range (converted to steps via
+               kStepsPerDegree) by arm_mega2.ino's own
+               clampToOperationalRange() before being accepted - a
+               target outside that range is silently clamped to the
+               nearest in-range value, not rejected outright.
       enable = 1 to energize all five drivers (3x TB6600, 2x A4988),
                0 to disable them (free-spin, e.g. before manually
                stowing the arm)
@@ -24,14 +31,21 @@ Frame types
                just that one joint on its own, leaving every other
                joint's homed status and position untouched. Ignored if
                a homing run is already in progress. Each joint's own
-               homing DIRECTION (kHomingDirection) and its post-limit-
-               switch OFFSET to its actual defined zero
-               (kHomingOffsetSteps) are also independently configurable
-               firmware-side constants now - both are set entirely in
-               arm_mega2.ino, not sent over the wire at all, since
-               they're physical-calibration facts about the hardware
-               itself, not something an operator chooses per homing
-               run.
+               homing DIRECTION (kHomingDirection) is independently
+               configurable too - set entirely in arm_mega2.ino, not
+               sent over the wire at all, since it's a physical-
+               calibration fact about the hardware itself, not
+               something an operator chooses per homing run. Once a
+               joint's limit switch trips, arm_mega2.ino's own
+               kLowerLimitSteps is what that joint's own position gets
+               labeled as (its own real, physical lower operational
+               bound, not an arbitrary zero) - the joint then moves the
+               rest of the way to absolute step 0, this project's own
+               definition of that joint's true center; see
+               arm_mega2.ino's own kLowerLimitSteps/kMinDeg/kMaxDeg
+               comments for the complete model, including the
+               operational-range clamp every 'A' and 'P' frame below is
+               now subject to.
 
   'P' (host -> Mega2): move to a predefined pose
       fields = [preset]
@@ -43,7 +57,11 @@ Frame types
                kServicePoseSteps), not sent over the wire - this frame
                only selects which one. Same "fully homed, not
                mid-homing, not e-stopped" gate as a regular 'A' command
-               - see arm_mega2.ino's handlePresetRequest().
+               - see arm_mega2.ino's handlePresetRequest() - and
+               subject to the same [kMinDeg, kMaxDeg] clamp the 'A'
+               frame above describes, as a defense-in-depth backstop
+               even though these particular targets should already be
+               in range by construction.
 
   'X' (host -> Mega2): emergency stop, latching
       fields = [engage]
@@ -67,7 +85,8 @@ Frame types
   'S' (Mega2 -> host): joint state
       fields = [j1, j2, j3, j4, j5, lim1, lim2, lim3, lim4, lim5,
                 homed1, homed2, homed3, homed4, homed5, voltage_mv,
-                temperature_deci_c, fan_duty_percent, estop_active]
+                temperature_deci_c, fan_duty_percent, estop_active,
+                drivers_enabled]
       j*     = current position in steps
       lim*   = 1 if that joint's calibration limit switch is currently
                triggered, else 0
@@ -95,6 +114,17 @@ Frame types
                (see the 'X' frame above), else 0 - the firmware's own
                authoritative state, not inferred from anything the
                host last sent.
+      drivers_enabled = 1 if all five joint drivers are currently
+               energized, else 0 - unlike fan_duty_percent above, this
+               DOES have a corresponding command field (the 'A' frame's
+               own enable), but is reported back here anyway rather
+               than left for the host to simply remember what it last
+               sent: startHoming() enables drivers automatically before
+               seeking, with no operator action involved, so a value
+               the host only remembered commanding would silently drift
+               out of sync with reality the moment homing started on
+               its own. This is the firmware's own actual, current
+               state, always - not a command echo.
 """
 
 from __future__ import annotations
@@ -163,8 +193,8 @@ def decode_line(line) -> Tuple[str, List[int]]:
 
 
 def parse_joint_state(fields: List[int]):
-    """Returns (positions[5], limit_switches[5]bool, joint_homed[5]bool, voltage_mv:int, temperature_deci_c:int, fan_duty_percent:int, estop_active:bool)."""
-    expected = NUM_JOINTS * 3 + 4
+    """Returns (positions[5], limit_switches[5]bool, joint_homed[5]bool, voltage_mv:int, temperature_deci_c:int, fan_duty_percent:int, estop_active:bool, drivers_enabled:bool)."""
+    expected = NUM_JOINTS * 3 + 5
     if len(fields) != expected:
         raise RoverFrameError(f"'S' frame expected {expected} fields, got {len(fields)}")
     positions = fields[0:NUM_JOINTS]
@@ -174,4 +204,5 @@ def parse_joint_state(fields: List[int]):
     temperature_deci_c = fields[3 * NUM_JOINTS + 1]
     fan_duty_percent = fields[3 * NUM_JOINTS + 2]
     estop_active = bool(fields[3 * NUM_JOINTS + 3])
-    return positions, limits, joint_homed, voltage_mv, temperature_deci_c, fan_duty_percent, estop_active
+    drivers_enabled = bool(fields[3 * NUM_JOINTS + 4])
+    return positions, limits, joint_homed, voltage_mv, temperature_deci_c, fan_duty_percent, estop_active, drivers_enabled

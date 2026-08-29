@@ -269,11 +269,14 @@ function setupArmPanel() {
     });
   });
 
-  document.getElementById("arm-disable").addEventListener("click", () => {
-    send("arm", { joint_target_steps: armTargets, enable: false });
-  });
-  document.getElementById("arm-enable").addEventListener("click", () => {
-    send("arm", { joint_target_steps: armTargets, enable: true });
+  // Single toggle, at the user's own explicit request - reads the
+  // CURRENT state from the latest telemetry (not a locally-tracked
+  // variable of its own) and sends the opposite. See renderTelemetry()
+  // for the matching label/color update, driven from the same
+  // data.arm.drivers_enabled field.
+  document.getElementById("arm-driver-toggle").addEventListener("click", () => {
+    const currentlyEnabled = !!(latestTelemetry && latestTelemetry.arm && latestTelemetry.arm.drivers_enabled);
+    send("arm", { joint_target_steps: armTargets, enable: !currentlyEnabled });
   });
 
   for (let i = 0; i < 5; i++) {
@@ -684,10 +687,29 @@ function renderTelemetry(data) {
         .map((p, i) => `<dt>J${i + 1}</dt><dd>${p} ${jointHomed[i] ? "\u2713" : "\u2717"}</dd>`)
         .join("") +
       `<dt>HOMED</dt><dd>${data.arm.homed ? "YES" : "NO"}</dd>` +
+      `<dt>DRIVERS</dt><dd>${data.arm.drivers_enabled ? "ENABLED" : "DISABLED"}</dd>` +
       `<dt>E-STOP</dt><dd${data.arm.estop_active ? ' class="estop-active"' : ""}>${data.arm.estop_active ? "ACTIVE" : "clear"}</dd>` +
       `<dt>SUPPLY</dt><dd>${formatVoltage(data.arm.supply_voltage_mv)}</dd>` +
       `<dt>TEMP</dt><dd>${formatTemperature(data.arm.board_temperature_decic)}</dd>` +
       `<dt>FAN</dt><dd>${data.arm.fan_duty_percent > 0 ? data.arm.fan_duty_percent + "%" : "OFF"}</dd>`;
+
+    // Single toggle button, driven by the firmware's own reported
+    // state (data.arm.drivers_enabled) every render - not a locally-
+    // tracked "what did I last click" variable, which would drift out
+    // of sync the moment startHoming() enables drivers on its own
+    // with no operator action involved. Styling (primary/danger)
+    // switches with it too, so the button's own color always matches
+    // what clicking it is about to do.
+    const driverToggle = document.getElementById("arm-driver-toggle");
+    if (data.arm.drivers_enabled) {
+      driverToggle.textContent = "DISABLE DRIVERS (FREE-SPIN)";
+      driverToggle.classList.remove("primary");
+      driverToggle.classList.add("danger");
+    } else {
+      driverToggle.textContent = "ENABLE DRIVERS";
+      driverToggle.classList.remove("danger");
+      driverToggle.classList.add("primary");
+    }
   }
 
   const telMast = document.getElementById("telemetry-mast");

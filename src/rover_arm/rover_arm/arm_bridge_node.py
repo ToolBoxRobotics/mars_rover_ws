@@ -220,7 +220,7 @@ class ArmBridgeNode(Node):
 
     def _publish_joint_state(self, fields) -> None:
         try:
-            positions, limits, joint_homed, voltage_mv, temperature_deci_c, fan_duty_percent, estop_active = (
+            positions, limits, joint_homed, voltage_mv, temperature_deci_c, fan_duty_percent, estop_active, drivers_enabled = (
                 arm_protocol.parse_joint_state(fields)
             )
         except Exception as exc:
@@ -237,6 +237,7 @@ class ArmBridgeNode(Node):
         state.board_temperature_decic = temperature_deci_c
         state.fan_duty_percent = fan_duty_percent
         state.estop_active = estop_active
+        state.drivers_enabled = drivers_enabled
         self._state_pub.publish(state)
 
     def _publish_status(self) -> None:

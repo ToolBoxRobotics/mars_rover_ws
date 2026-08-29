@@ -3,13 +3,18 @@ of ROS dependencies so it's testable without rclpy - same pure-logic/
 thin-IO split used throughout this workspace (e.g. rover_base/odometry.py).
 
 Calibration source: rover_arm/config/arm_topology.yaml's
-steps_per_joint_rev (200 full steps * 1/16 microstepping * 5:1 gear =
-16000, per joint - see that file's own comment for the reasoning).
-That parameter existed as declared-but-unused placeholder data before
-this module gave it something to actually do: converting MoveIt's
-planned trajectories (radians, relative to each joint's homed zero -
-see arm_mega2.ino's homing sequence) into the joint_target_steps this
-rover's firmware has always expected.
+steps_per_joint_rev (200 full steps * 1/16 microstepping * 120:1
+EBA-17-M planetary gearbox = 384000, per joint - see that file's own
+comment for the reasoning, and its own note that the 120:1 figure is
+specifically for the "M" gearbox variant actually used here, not the
+38.4:1 publicly documented for the base EBA-17/EBA-17-S). That
+parameter existed as declared-but-unused placeholder data before this
+module gave it something to actually do: converting MoveIt's planned
+trajectories (radians, relative to each joint's homed zero - see
+arm_mega2.ino's homing sequence, and its own kLowerLimitSteps/kMinDeg/
+kMaxDeg for how that zero and the operational range around it are now
+established) into the joint_target_steps this rover's firmware has
+always expected.
 """
 
 from __future__ import annotations

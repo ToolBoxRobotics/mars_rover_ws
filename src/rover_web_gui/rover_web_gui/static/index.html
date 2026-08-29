@@ -81,19 +81,18 @@
         </div>
         <div class="controls-row" style="margin-top:14px;">
           <div class="slider-block"><label>J1 SHOULDER YAW <output id="arm-joint-0-out">0</output></label>
-            <input type="range" min="-16000" max="16000" value="0" data-joint-index="0"></div>
+            <input type="range" min="-160000" max="160000" value="0" data-joint-index="0"></div>
           <div class="slider-block"><label>J2 SHOULDER PITCH <output id="arm-joint-1-out">0</output></label>
-            <input type="range" min="-16000" max="16000" value="0" data-joint-index="1"></div>
+            <input type="range" min="-106667" max="106667" value="0" data-joint-index="1"></div>
           <div class="slider-block"><label>J3 ELBOW PITCH <output id="arm-joint-2-out">0</output></label>
-            <input type="range" min="-16000" max="16000" value="0" data-joint-index="2"></div>
+            <input type="range" min="-160000" max="160000" value="0" data-joint-index="2"></div>
           <div class="slider-block"><label>J4 WRIST PITCH <output id="arm-joint-3-out">0</output></label>
-            <input type="range" min="-16000" max="16000" value="0" data-joint-index="3"></div>
+            <input type="range" min="-106667" max="106667" value="0" data-joint-index="3"></div>
           <div class="slider-block"><label>J5 WRIST ROLL <output id="arm-joint-4-out">0</output></label>
-            <input type="range" min="-16000" max="16000" value="0" data-joint-index="4"></div>
+            <input type="range" min="-181333" max="181333" value="0" data-joint-index="4"></div>
         </div>
         <div class="controls-row" style="margin-top:14px;">
-          <button class="btn primary" id="arm-enable">ENABLE DRIVERS</button>
-          <button class="btn danger" id="arm-disable">DISABLE (FREE-SPIN)</button>
+          <button class="btn primary" id="arm-driver-toggle">ENABLE DRIVERS</button>
         </div>
         <div class="controls-row" style="margin-top:14px;">
           <button class="btn" id="arm-cal-0">CALIBRATE J1</button>
@@ -109,7 +108,7 @@
           <button class="btn" id="arm-preset-service">SERVICE POSITION</button>
           <span class="deadman-hint" id="arm-action-status"></span>
         </div>
-        <p class="deadman-hint">Targets are motor steps from the homed zero. Joint moves are ignored until every joint is individually calibrated - use the buttons above on demand, or wait for the automatic all-5 calibration this board also runs once at startup. The three preset buttons (INITIAL/TRANSPORT/SERVICE POSITION) currently all move to the same all-zero pose - real, distinct poses for each are pending bench calibration in arm_mega2.ino's own firmware constants.</p>
+        <p class="deadman-hint">Targets are motor steps from the homed zero, which is each joint's own true mechanical center (not the limit switch itself) once calibrated. Slider bounds match each joint's own operational range from rover_description/urdf/arm.xacro (also what arm_mega2.ino's own firmware independently clamps to, and what MoveIt itself already plans within) - a UI-side backstop alongside the firmware's own, not a replacement for it; if arm.xacro's own limits are ever revised, these five slider bounds need updating by hand to match, same as arm_mega2.ino's own kMinDeg/kMaxDeg, since there's no automatic way to share one number across the URDF/firmware/browser boundary. Joint moves are ignored until every joint is individually calibrated - use the buttons above on demand, or wait for the automatic all-5 calibration this board also runs once at startup. The three preset buttons (INITIAL/TRANSPORT/SERVICE POSITION) currently all move to the same all-zero pose (now genuinely meaningful - every joint at its own true center, not an arbitrary placeholder position) - real, distinct poses for TRANSPORT/SERVICE are still pending bench calibration in arm_mega2.ino's own firmware constants.</p>
       </div>
     </section>
 

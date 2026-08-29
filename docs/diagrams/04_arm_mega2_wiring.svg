@@ -1,0 +1,41 @@
+<svg width="100%" viewBox="0 0 680 260" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Arm Mega 2 wiring: joint steppers, shared enable, limit switches, voltage sensor</title>
+<desc>Arm Mega number 2 connects to four groups: five NEMA17 stepper motors through A4988 drivers, one shared enable pin for all five drivers, five limit switches used for homing, and an FZ0430 voltage sensor on analog pin A0 monitoring the main battery supply.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#73726c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<style>
+  .board { fill: #E1F5EE; stroke: #0F6E56; }
+  .cat { fill: #FAEEDA; stroke: #854F0B; }
+  .sensor { fill: #FAECE7; stroke: #993C1D; }
+  .th { font: 500 14px sans-serif; }
+  .ts { font: 400 12px sans-serif; }
+  .board .th { fill: #04342C; }
+  .board .ts { fill: #085041; }
+  .cat .th { fill: #412402; }
+  .cat .ts { fill: #633806; }
+  .sensor .th { fill: #4A1B0C; }
+  .sensor .ts { fill: #712B13; }
+  .arr { stroke: #73726c; stroke-width: 1.5; fill: none; }
+</style>
+
+<g><rect class="board" x="250" y="30" width="180" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="48" text-anchor="middle" dominant-baseline="central">Arm Mega #2</text>
+<text class="ts" x="340" y="66" text-anchor="middle" dominant-baseline="central">rover_arm firmware</text></g>
+
+<line x1="340" y1="86" x2="107" y2="160" class="arr" marker-end="url(#arrow)"/>
+<line x1="340" y1="86" x2="257" y2="160" class="arr" marker-end="url(#arrow)"/>
+<line x1="340" y1="86" x2="407" y2="160" class="arr" marker-end="url(#arrow)"/>
+<line x1="340" y1="86" x2="557" y2="160" class="arr" marker-end="url(#arrow)"/>
+
+<g><rect class="cat" x="40" y="160" width="135" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="107" y="178" text-anchor="middle" dominant-baseline="central">Steppers</text>
+<text class="ts" x="107" y="196" text-anchor="middle" dominant-baseline="central">STEP/DIR pairs</text></g>
+<g><rect class="cat" x="190" y="160" width="135" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="257" y="178" text-anchor="middle" dominant-baseline="central">Enable</text>
+<text class="ts" x="257" y="196" text-anchor="middle" dominant-baseline="central">Pin 12</text></g>
+<g><rect class="cat" x="340" y="160" width="135" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="407" y="178" text-anchor="middle" dominant-baseline="central">Limits</text>
+<text class="ts" x="407" y="196" text-anchor="middle" dominant-baseline="central">Pins 22-26</text></g>
+<g><rect class="sensor" x="490" y="160" width="135" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="557" y="178" text-anchor="middle" dominant-baseline="central">Voltage</text>
+<text class="ts" x="557" y="196" text-anchor="middle" dominant-baseline="central">FZ0430, A0</text></g>
+</svg>

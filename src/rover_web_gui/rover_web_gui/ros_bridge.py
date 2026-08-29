@@ -194,6 +194,7 @@ class RosBridge:
                 "board_temperature_decic": msg.board_temperature_decic,
                 "fan_duty_percent": msg.fan_duty_percent,
                 "estop_active": msg.estop_active,
+                "drivers_enabled": msg.drivers_enabled,
             }
 
     def _on_mast_state(self, msg: MastState) -> None:

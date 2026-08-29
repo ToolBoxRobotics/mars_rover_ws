@@ -213,8 +213,8 @@ individually.
 |---|---|
 | `E-STOP` | Immediately stops all 5 joints (a fast, controlled deceleration, not an instant freeze) and blocks any further movement until cleared. **Does not de-energize the drivers** — see the callout below before assuming that's a bug |
 | `CLEAR E-STOP` | Releases the e-stop, allowing movement again |
-| 5 sliders | Direct per-joint position (motor steps from the calibrated zero) |
-| `ENABLE DRIVERS` / `DISABLE (FREE-SPIN)` | Energize/de-energize all 5 joint motors |
+| 5 sliders | Direct per-joint position (motor steps from the calibrated center — J1/J3 ±150°, J2/J4 ±100°, J5 ±170°; each slider's own range matches its joint's real operational limit, and is enforced again on the firmware side regardless of what the slider allows) |
+| `ENABLE DRIVERS` / `DISABLE DRIVERS (FREE-SPIN)` | Single toggle — energize/de-energize all 5 joint motors. Label and color both follow the arm's own actual current state, not which one you last clicked, same as the `DRIVERS` line in the telemetry panel below |
 | `CALIBRATE J1`–`CALIBRATE J5` | Re-calibrate one joint on its own, leaving the other four alone |
 | `CALIBRATE ALL 5` | Full re-calibration sequence, same as what runs automatically at startup |
 | `INITIAL POSITION` | Move to the arm's predefined starting pose |
@@ -223,23 +223,23 @@ individually.
 
 A status line under those buttons shows the result of whichever one
 you last pressed. Each joint's position in the telemetry panel is
-marked ✓ or ✗ for calibrated/not, and the panel's own `E-STOP` row
-shows the arm's actual current state — driven by the arm itself, not
-by which button you last clicked, so it stays correct even after a
-page reload or if someone else triggered it.
+marked ✓ or ✗ for calibrated/not, and the panel's own `DRIVERS` and
+`E-STOP` rows show the arm's actual current state — driven by the arm
+itself, not by which button you last clicked, so both stay correct
+even after a page reload or if someone else triggered a change.
 
 **All three preset buttons currently move to the same pose** (every
-joint at its own zero) — distinct, genuinely useful poses for each are
-still pending real-world calibration. They'll diverge once that's
-done; there's nothing to configure on your end for this.
+joint at its own true center) — distinct, genuinely useful poses for
+each are still pending real-world calibration. They'll diverge once
+that's done; there's nothing to configure on your end for this.
 
 **The emergency stop does not cut power to the joint motors.** This is
 deliberate, not an oversight: the arm is gravity-loaded, and cutting
 power mid-motion risks it dropping under its own weight rather than
 holding position — judged the worse outcome. `E-STOP` halts movement
 quickly but leaves the drivers holding the arm exactly where it
-stopped; `DISABLE (FREE-SPIN)` above is the separate control for
-actually de-energizing the joints, and doing that with the arm
+stopped; `DISABLE DRIVERS (FREE-SPIN)` above is the separate control
+for actually de-energizing the joints, and doing that with the arm
 unsupported will let it fall.
 
 **Xbox controller** (press LB until the controller is in ARM mode):

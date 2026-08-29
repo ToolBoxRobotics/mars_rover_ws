@@ -939,21 +939,55 @@ re-homed individually afterward without disturbing the others:
 ros2 service call /rover_arm/home_joint rover_msgs/srv/HomeJoint "{joint_index: 2}"
 ros2 topic echo /rover_arm/state   # joint_homed[2] should go false, then true again once J3 re-triggers its switch
 ```
-Each joint's own homing direction (`kHomingDirection`), the order
-joints home in during an all-5 run (`kHomingOrder`), and each joint's
-post-limit-switch offset (`kHomingOffsetSteps`) are all independently
+Each joint's own homing direction (`kHomingDirection`) and the order
+joints home in during an all-5 run (`kHomingOrder`) are independently
 configurable in `arm_mega2.ino` — currently PLACEHOLDER values
-matching the previous behavior (uniform direction, sequential J1-J5,
-zero offset) pending real mechanical verification; see README's "Arm
-calibration" section for the full reasoning behind each. If a joint
-seeks in the wrong direction or never triggers its switch, check
-`kHomingDirection` for that joint before assuming a wiring fault. If a
-joint's final homed position looks offset from where you'd expect
-"zero" to actually be once `kHomingOffsetSteps` is eventually
-calibrated away from its current all-zero placeholder, that's the
-offset move working as designed, not a bug — the limit switch's own
-physical trigger point and the joint's own true zero aren't
-necessarily the same point.
+matching the previous behavior (uniform direction, sequential J1-J5)
+pending real mechanical verification; see README's "Arm calibration"
+section for the full reasoning behind each. If a joint seeks in the
+wrong direction or never triggers its switch, check `kHomingDirection`
+for that joint before assuming a wiring fault.
+
+Once a joint's switch trips, it's assigned `kLowerLimitSteps[j]` (that
+joint's own real, physical lower bound - PLACEHOLDER, currently
+mirroring `kMinDeg[j]` converted to steps) and then drives to absolute
+step 0, which this project now defines as that joint's own true
+center - not an arbitrary reference point. Once real, distinct values
+replace the current placeholders, watch `ros2 topic echo
+/rover_arm/state`'s own `joint_position_steps` settle at 0 after this
+second move completes, not at the switch's own trigger point - that's
+the design working as intended, not a bug. Every joint command (and
+preset move) is also clamped to `[kMinDeg, kMaxDeg]` in degrees
+(`kStepsPerDegree` converts) before being accepted - bench-verify this
+directly by commanding a target well outside a joint's own declared
+range and confirming `joint_position_steps` settles at the clamped
+bound, not the requested one:
+```bash
+ros2 topic pub --once /rover_arm/command rover_msgs/msg/ArmCommand "{joint_target_steps: [999999, 0, 0, 0, 0], enable: true}"
+ros2 topic echo /rover_arm/state   # joint_position_steps[0] should settle at 160000 (J1's own kMaxDeg=150deg in steps), not 999999
+```
+`kStepsPerDegree`, `kMinDeg`/`kMaxDeg`, and `kLowerLimitSteps` are all
+sourced from numbers this project had already established elsewhere
+(`rover_arm/config/arm_topology.yaml`'s own `steps_per_joint_rev`, and
+`rover_description/urdf/arm.xacro`'s own joint `<limit>` tags) rather
+than freshly guessed here — see README's "Explicit assumptions" for
+the full sourcing rationale and the manual-sync obligation this
+creates across those files plus the web GUI's own slider bounds.
+
+`ArmState`'s own `drivers_enabled` field is the firmware's actual,
+current state, not an echo of what was last commanded — bench-verify
+this distinction directly by triggering homing and watching it flip on
+its own, with no `enable: true` sent from anywhere:
+```bash
+ros2 topic echo /rover_arm/state   # watch drivers_enabled
+ros2 service call /rover_arm/home_joint rover_msgs/srv/HomeJoint "{joint_index: 0}"
+```
+`drivers_enabled` should go `true` the moment homing starts, before
+any joint command with `enable: true` has been sent. The web GUI's own
+arm panel has a single toggle button for this now (`ENABLE DRIVERS` /
+`DISABLE DRIVERS (FREE-SPIN)`, replacing what used to be two separate
+buttons) — its label and color both follow this same field on every
+telemetry update, not a value the browser remembers clicking.
 
 Once calibrated, three predefined poses are reachable directly:
 ```bash

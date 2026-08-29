@@ -87,8 +87,8 @@ def test_encode_emergency_stop_clear():
 
 
 def test_parse_joint_state_valid():
-    fields = [10, 20, 30, 40, 50, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 12600, 235, 65, 0]
-    positions, limits, joint_homed, voltage_mv, temperature_deci_c, fan_duty_percent, estop_active = (
+    fields = [10, 20, 30, 40, 50, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 12600, 235, 65, 0, 1]
+    positions, limits, joint_homed, voltage_mv, temperature_deci_c, fan_duty_percent, estop_active, drivers_enabled = (
         arm_protocol.parse_joint_state(fields)
     )
     assert positions == [10, 20, 30, 40, 50]
@@ -98,19 +98,26 @@ def test_parse_joint_state_valid():
     assert temperature_deci_c == 235
     assert fan_duty_percent == 65
     assert estop_active is False
+    assert drivers_enabled is True
 
 
 def test_parse_joint_state_estop_active_true():
-    fields = [10, 20, 30, 40, 50, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 12600, 235, 65, 1]
-    *_rest, estop_active = arm_protocol.parse_joint_state(fields)
+    fields = [10, 20, 30, 40, 50, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 12600, 235, 65, 1, 0]
+    *_rest, estop_active, _drivers_enabled = arm_protocol.parse_joint_state(fields)
     assert estop_active is True
+
+
+def test_parse_joint_state_drivers_enabled_false():
+    fields = [10, 20, 30, 40, 50, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 12600, 235, 65, 0, 0]
+    *_rest, drivers_enabled = arm_protocol.parse_joint_state(fields)
+    assert drivers_enabled is False
 
 
 def test_parse_joint_state_per_joint_homed_can_be_partial():
     # The whole point of per-joint homing: some joints homed, others
     # not, at the same time - must not collapse into a single bool.
-    fields = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 12000, -9999, 0, 0]
-    _, _, joint_homed, _, _, _, _ = arm_protocol.parse_joint_state(fields)
+    fields = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 12000, -9999, 0, 0, 0]
+    _, _, joint_homed, _, _, _, _, _ = arm_protocol.parse_joint_state(fields)
     assert joint_homed == [True, False, False, False, False]
 
 
@@ -132,6 +139,9 @@ def test_parse_joint_state_wrong_length_raises():
         # Old 18-field format from before estop_active was added - must
         # not be silently accepted either.
         arm_protocol.parse_joint_state([10, 20, 30, 40, 50, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 12600, 235, 65])
+    with pytest.raises(RoverFrameError):
+        # Old 19-field format from before drivers_enabled was added.
+        arm_protocol.parse_joint_state([10, 20, 30, 40, 50, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 12600, 235, 65, 0])
 
 
 # -- regression: numpy.int32 elements from a ROS array field --------------
