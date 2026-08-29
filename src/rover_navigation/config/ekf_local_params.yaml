@@ -1,0 +1,101 @@
+# robot_localization EKF - LOCAL instance.
+#
+# Fuses wheel odometry (rover_base's odometry_node, remapped to
+# `wheel_odom` and stripped of its own TF broadcast - see
+# localization.launch.py) with the BNO086 IMU to produce a smoother,
+# more accurate `odom -> base_link` TF than either sensor alone, which
+# directly improves what slam_toolbox's scan matching and Nav2's local
+# costmap both already consume. world_frame is `odom` (not `map`) -
+# this instance deliberately does NOT touch the `map -> odom` edge,
+# since slam_toolbox (while mapping) or AMCL (while navigating a saved
+# map) already own that edge from laser scan matching. A second,
+# global EKF fusing GPS into `map -> odom` is a well-known
+# robot_localization pattern (see navsat_transform_params.yaml's own
+# header for why it's deliberately NOT built that way here - it would
+# fight slam_toolbox/AMCL for the same TF edge).
+#
+# Fusion field selection is deliberately narrow, matched to what each
+# sensor actually measures on this rover rather than the common
+# copy-pasted "fuse everything" template:
+#   - wheel odometry gives planar position + linear/angular velocity
+#     (exact for ACKERMANN/POINT_TURN - see rover_base/odometry.py) -
+#     NOT orientation (differential-drive odometry's heading estimate
+#     is itself derived from wheel geometry, so fusing the IMU's
+#     independently-measured orientation instead avoids reinforcing
+#     the same error twice).
+#   - the BNO086 in UART-RVC mode gives absolute orientation (its own
+#     internal sensor fusion) and linear acceleration, but NOT angular
+#     velocity - rover_sensors' bno086_rvc_node explicitly marks
+#     angular_velocity_covariance as unavailable (REP 103 sentinel)
+#     rather than fabricate it, and this config respects that by
+#     simply not requesting those fields here either.
+
+ekf_filter_node:
+  ros__parameters:
+    frequency: 30.0
+    two_d_mode: true          # ground rover; don't estimate z/roll/pitch position
+    publish_tf: true          # this EKF owns odom -> base_link
+    publish_acceleration: false
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom          # local instance: publishes odom -> base_link, not map -> odom
+
+    odom0: wheel_odom
+    # [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+    odom0_differential: false
+    odom0_relative: false
+    odom0_queue_size: 5
+    # Wheel odometry contributes VELOCITY (vx, vyaw) only, not absolute
+    # position/heading - letting the EKF integrate velocity itself
+    # (rather than also fusing odometry's own position estimate)
+    # avoids double-counting the same underlying encoder data twice
+    # and lets the IMU's independent orientation correct heading drift
+    # over time instead of the filter trusting wheel-derived heading.
+
+    imu0: /rover_sensors/imu/data
+    imu0_config: [false, false, false,
+                  false, false, true,
+                  false, false, false,
+                  false, false, false,
+                  true,  true,  false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 5
+    imu0_remove_gravitational_acceleration: true
+    # Only yaw is fused from orientation, not roll/pitch: two_d_mode
+    # (above) constrains the filter's own state to z=roll=pitch=0
+    # regardless of what's fed in, so fusing roll/pitch here would just
+    # be immediately corrected back to zero every cycle - harmless, but
+    # pointless work that makes the config say something it doesn't
+    # mean. Linear acceleration (ax, ay) is fused; angular velocity is
+    # deliberately excluded end to end (BNO086 UART-RVC mode doesn't
+    # provide it - see the module docstring in
+    # rover_sensors/bno086_rvc_node.py). az is excluded too: on a
+    # ground rover it's mostly vibration noise, not signal.
+
+    process_noise_covariance: [0.05, 0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                0,    0.05, 0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                0,    0,    0.06, 0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                0,    0,    0,    0.03, 0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                0,    0,    0,    0,    0.03, 0,    0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                0,    0,    0,    0,    0,    0.06, 0,     0,     0,    0,    0,    0,    0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0.025, 0,     0,    0,    0,    0,    0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,     0.025, 0,    0,    0,    0,    0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,     0,     0.04, 0,    0,    0,    0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,     0,     0,    0.01, 0,    0,    0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0.01, 0,    0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0.02, 0,    0,    0,
+                                0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0.01, 0,    0,
+                                0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0.01, 0,
+                                0,    0,    0,    0,    0,    0,    0,     0,     0,    0,    0,    0,    0,    0,    0.015]
+    # robot_localization's own documented default process_noise_covariance,
+    # not independently re-derived - a reasonable, widely-used starting
+    # point. Tune down the yaw/vyaw terms first if heading feels sluggish
+    # to correct after a turn, or up if it's noticeably jittery.

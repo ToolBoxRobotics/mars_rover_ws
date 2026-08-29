@@ -1,0 +1,12 @@
+# Triggers or clears the arm's latching emergency stop - used by the
+# web GUI's E-STOP button. See arm_mega2.ino's own handleEmergencyStop()
+# for what this actually does on the firmware side (an immediate,
+# accel-profiled stop on every joint, drivers left energized
+# deliberately - not a power-cutting stop).
+#
+# Request
+bool engage    # true = latch the e-stop, false = clear it
+---
+# Response
+bool accepted   # false if rejected - see message for why
+string message  # human-readable detail (e.g. "emergency stop engaged", "emergency stop cleared", "rejected: write to serial link failed (port not open?)")

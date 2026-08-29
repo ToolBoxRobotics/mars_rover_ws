@@ -1,0 +1,40 @@
+# navsat_transform_node - converts the L76X GPS's lat/lon fixes into
+# Cartesian coordinates in the local EKF's frame, and back again.
+#
+# Deliberately NOT wired into a second, GPS-fusing "global" EKF here.
+# robot_localization's own documented guidance is explicit about why
+# that would be a problem on this rover specifically: a GPS-fusing EKF
+# needs world_frame=map, which means IT would publish the map->odom
+# TF - but slam_toolbox (while mapping) or Nav2's AMCL (while
+# navigating a saved map) already own that exact TF edge from laser
+# scan matching. Two publishers of the same TF edge fight each other;
+# there is no clean way to run both. See ekf_local_params.yaml's
+# header for the corresponding local-EKF-only side of this decision.
+#
+# What this node is used for instead - both entirely conflict-free
+# with slam_toolbox/AMCL:
+#   1. Telemetry: /odometry/gps is a Cartesian, filtered rendering of
+#      "where the GPS thinks the rover is," independent of the
+#      SLAM/AMCL estimate - useful to log and compare the two against
+#      each other as a sanity check, without either one controlling
+#      any TF.
+#   2. GPS waypoint goals: this node's /fromLL service converts a
+#      lat/lon into the current map-frame coordinates on demand. See
+#      rover_navigation/scripts/gps_goal.py, which uses exactly that
+#      service to turn "go to this GPS coordinate" into an ordinary
+#      Nav2 navigate_to_pose goal - Nav2 and AMCL never need to know
+#      GPS was involved at all.
+navsat_transform_node:
+  ros__parameters:
+    frequency: 30.0
+    delay: 3.0                  # seconds to wait after startup for a stable GPS fix before setting the datum
+    magnetic_declination_radians: 0.0   # set for your location if you need true-vs-magnetic-north precision
+    yaw_offset: 0.0
+    zero_altitude: true          # 2D ground rover; ignore GPS altitude entirely
+    broadcast_utm_transform: false
+    publish_filtered_gps: true
+    use_odometry_yaw: true       # take heading from the fused EKF estimate rather than GPS course-over-ground,
+                                  # which is unreliable at low speed / while stationary
+    wait_for_datum: false        # auto-initialize the datum from the first good GPS fix rather than requiring
+                                  # one to be set manually - fine for a rover that doesn't need a precise,
+                                  # pre-surveyed origin point

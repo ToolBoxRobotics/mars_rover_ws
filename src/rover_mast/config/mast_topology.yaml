@@ -1,0 +1,44 @@
+# Mast Uno #3: 2-axis pan/tilt head (yaw/pitch, NEMA17+TB6600, each
+# with its own calibration switch - homed to a known zero on startup,
+# same pattern as rover_arm) plus a DC lift motor (HW-039 driver) that
+# erects the mast from its horizontal transport position to a
+# vertical service position, bounded by two limit switches.
+
+# Shared with any node that needs them - currently rover_teleop's
+# xbox_teleop_node (MAST mode's stick-to-angle scaling) and
+# rover_web_gui (the web GUI's "RETURN HOME"/"TRANSPORT POSITION"
+# buttons, exposed via GET /api/config). NOT used by rover_mast_bridge
+# itself, which just forwards whatever yaw/pitch it's sent without
+# reasoning about limits or presets - kept out of that node's own
+# block below for the same reason arm_topology.yaml's joint_names/
+# steps_per_joint_rev live in a shared block rather than
+# rover_arm_bridge's own.
+#
+# max_head_yaw_deg/max_head_pitch_deg used to be duplicated here AND
+# in rover_teleop/config/xbox_teleop.yaml, with no shared source of
+# truth between the two copies - consolidated into this one shared
+# block instead, the same fix drive_sensitivity.yaml already applied
+# to max_linear_mps/max_angular_radps/deadzone for base driving.
+/**:
+  ros__parameters:
+    max_head_yaw_deg: 170.0
+    max_head_pitch_deg: 180.0  # confirmed real range, wider than the earlier 60.0 placeholder
+    # Yaw/pitch to drive to before/instead of stowing the lift, so the
+    # head is somewhere known and mechanically clear rather than
+    # wherever it last happened to be pointed - the web GUI's
+    # "TRANSPORT POSITION" button sends exactly these two numbers as
+    # an ordinary MastCommand. Placeholder 0.0/0.0 (dead ahead, level)
+    # until the real mechanism is on the bench and an actual safe
+    # transport orientation is known - tune these two once it is, no
+    # code change needed either way.
+    transport_head_yaw_deg: 0.0
+    transport_head_pitch_deg: 0.0
+
+rover_mast_bridge:
+  ros__parameters:
+    serial_port: "/dev/rover/mast"
+    serial_baud: 115200
+    boot_grace_sec: 2.0            # Arduino resets on connect; ignore I/O until it reboots
+    control_rate_hz: 10.0
+    command_timeout_sec: 1.0
+    home_on_startup: true

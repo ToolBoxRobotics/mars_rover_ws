@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>rover_power</name>
+  <version>0.1.0</version>
+  <description>Power/environmental monitoring Uno #6 bridge: two 24V batteries' own voltage and current (each from its own INA226 behind a TCA9548A mux), onboard computer temperature, and its automatic cooling fan. Telemetry-only - this board has no command message.</description>
+  <maintainer email="rover@toolboxrobotics.local">Toolbox Robotics</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>rover_msgs</depend>
+  <depend>rover_protocol</depend>
+  <depend>python3-serial</depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

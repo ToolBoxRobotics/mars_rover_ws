@@ -1,0 +1,16 @@
+# Power/environmental monitoring Uno #6: two 24V batteries' own
+# voltage and current (each from its own INA226 behind a TCA9548A I2C
+# mux), onboard computer temperature (one DS18B20), and that
+# computer's automatic cooling fan. No command message, no
+# command-related parameters here (no command_timeout_sec, no
+# home_on_startup) - this board has nothing to command, only
+# telemetry to report. See power_bridge_node.py's own header comment
+# for what that changes structurally versus every other board's
+# bridge node.
+
+rover_power_bridge:
+  ros__parameters:
+    serial_port: "/dev/rover/power"
+    serial_baud: 115200
+    boot_grace_sec: 2.0            # Arduino resets on connect; ignore I/O until it reboots
+    poll_rate_hz: 10.0             # how often this node drains incoming serial data - the firmware itself decides when to actually send (every ~200ms, see power_uno6.ino's kStateSendIntervalMs), this just needs to poll at least that often to avoid a backlog

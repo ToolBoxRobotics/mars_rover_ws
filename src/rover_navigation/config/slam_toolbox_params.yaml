@@ -1,0 +1,85 @@
+# slam_toolbox (online async mode) parameters for the rover.
+#
+# This is a standard slam_toolbox mapping configuration, tuned only
+# where the rover's specific hardware calls for it (frame names,
+# scan topic, laser range) - everything else is left at slam_toolbox's
+# own well-tested defaults rather than re-guessed from scratch. See
+# https://github.com/SteveMacenski/slam_toolbox for the meaning of any
+# parameter not commented below.
+#
+# Used for BUILDING a map (see rover_navigation/launch/slam.launch.py).
+# Once you have a map you're happy with, save it (see README) and
+# switch to launch/navigation.launch.py for actual autonomous
+# navigation, which uses Nav2's AMCL to localize against that saved
+# map instead of continuing to build one.
+
+slam_toolbox:
+  ros__parameters:
+    # Plugin params
+    solver_plugin: solver_plugins::CeresSolver
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
+    ceres_preconditioner: SCHUR_JACOBI
+    ceres_trust_strategy: LEVENBERG_MARQUARDT
+    ceres_dogleg_type: TRADITIONAL_DOGLEG
+    ceres_loss_function: None
+
+    # ROS parameters
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_link
+    scan_topic: /scan
+    mode: mapping
+
+    debug_logging: false
+    throttle_scans: 1
+    transform_publish_period: 0.02
+    map_update_interval: 5.0
+    resolution: 0.05
+    # RPLIDAR C1 is rated to a 12m radius on a bright/white surface but
+    # only ~6m on a dark, low-reflectivity one (Slamtec's own spec) -
+    # 10.0 here is a middle-ground default; lower it if your operating
+    # environment is mostly dark/absorptive surfaces, and note the
+    # 0.05m blind zone means anything closer than that is invisible
+    # regardless of this setting.
+    max_laser_range: 10.0
+    minimum_time_interval: 0.5
+    transform_timeout: 0.2
+    tf_buffer_duration: 30.0
+    stack_size_to_use: 40000000
+    enable_interactive_mode: true
+
+    # General Parameters
+    use_scan_matching: true
+    use_scan_barycenter: true
+    minimum_travel_distance: 0.3
+    minimum_travel_heading: 0.3
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 10.0
+    link_match_minimum_response_fine: 0.1
+    link_scan_maximum_distance: 1.5
+    loop_search_maximum_distance: 3.0
+    do_loop_closing: true
+    loop_match_minimum_chain_size: 10
+    loop_match_maximum_variance_coarse: 3.0
+    loop_match_minimum_response_coarse: 0.35
+    loop_match_minimum_response_fine: 0.45
+
+    # Correlation Parameters - Correlation Parameters
+    correlation_search_space_dimension: 0.5
+    correlation_search_space_resolution: 0.01
+    correlation_search_space_smear_deviation: 0.1
+
+    # Correlation Parameters - Loop Closure Parameters
+    loop_search_space_dimension: 8.0
+    loop_search_space_resolution: 0.05
+    loop_search_space_smear_deviation: 0.03
+
+    # Scan Matcher Parameters
+    distance_variance_penalty: 0.5
+    angle_variance_penalty: 1.0
+    fine_search_angle_offset: 0.00349
+    coarse_search_angle_offset: 0.349
+    coarse_angle_resolution: 0.0349
+    minimum_angle_penalty: 0.9
+    minimum_distance_penalty: 0.5
+    use_response_expansion: true

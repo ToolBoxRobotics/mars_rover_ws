@@ -1,0 +1,28 @@
+bno086_rvc_node:
+  ros__parameters:
+    serial_port: "/dev/rover/imu"       # BNO086 wired straight to a Waveshare Industrial USB-TTL converter
+    serial_baud: 115200                  # fixed by the BNO08X UART-RVC interface
+    frame_id: "imu_link"
+    # Board: SparkFun VR IMU Breakout - BNO086 (Qwiic), factory I2C
+    # address 0x4B. That address is NOT used by this driver - the
+    # board's PS0/PS1 jumpers must be strapped for UART-RVC mode (not
+    # I2C) since it's wired to a Waveshare "USB TO TTL (B)" (CH343G),
+    # which is UART-only and cannot carry I2C. Kept here for the
+    # record in case the jumpers are ever changed to I2C mode instead,
+    # which would need a different (address-aware) driver.
+
+gps_l76x_node:
+  ros__parameters:
+    serial_port: "/dev/rover/gps"        # Waveshare L76X wired straight to USB
+    serial_baud: 9600                     # default L76X NMEA baud; raise via PMTK cmd if reconfigured
+    frame_id: "gps_link"
+
+main_camera_node:
+  ros__parameters:
+    camera_device: "/dev/rover/main_cam"  # stable udev symlink, see README
+    frame_width: 1280
+    frame_height: 720
+    frame_rate_hz: 15.0
+    jpeg_quality: 80
+    frame_id: "main_camera_optical_frame"
+

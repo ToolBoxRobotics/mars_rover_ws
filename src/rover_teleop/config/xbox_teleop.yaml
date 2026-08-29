@@ -1,0 +1,45 @@
+# Xbox 360 controller teleop. Axis/button indices below match the
+# classic `joy_node` + Linux `xpad` driver mapping for a wired Xbox 360
+# controller. Gamepad mappings are notoriously inconsistent across
+# drivers/OS versions - run `ros2 topic echo /joy` while moving each
+# stick/trigger/button to confirm (and correct, via these same
+# parameters) the indices for your actual hardware before relying on
+# this for anything near people or expensive parts.
+xbox_teleop_node:
+  ros__parameters:
+    # max_linear_mps, max_angular_radps, and deadzone live in the
+    # shared drive_sensitivity.yaml now (also used by the web GUI's
+    # virtual joystick) - not duplicated here.
+
+    axis_left_x: 0
+    axis_left_y: 1
+    axis_left_trigger: 2
+    axis_right_x: 3
+    axis_right_y: 4
+    axis_right_trigger: 5
+
+    button_a: 0
+    button_b: 1
+    button_x: 2      # in DRIVE mode: toggle ACKERMANN <-> POINT_TURN
+    button_y: 3       # in DRIVE mode: force STOP immediately (one-way; X to resume)
+    button_lb: 4       # cycles control mode: DRIVE -> ARM -> MAST -> MICROSCOPE -> DRIVE
+    button_rb: 5        # deadman switch: must be held for any command to pass through
+    button_back: 6
+    button_start: 7
+
+    invert_left_y: false
+    invert_right_y: false
+
+    # ARM mode: analog jog speed for joints 1-4 (stick deflection),
+    # digital jog speed for joint 5 (triggers)
+    arm_jog_steps_per_sec: 800.0
+
+    # MAST mode: max_head_yaw_deg/max_head_pitch_deg (absolute position
+    # mapped from stick deflection) live in the shared
+    # rover_mast/config/mast_topology.yaml now (also used by the web
+    # GUI's "RETURN HOME"/"TRANSPORT POSITION" buttons) - not
+    # duplicated here, same fix already applied to max_linear_mps/etc
+    # via drive_sensitivity.yaml above.
+
+    # MICROSCOPE mode
+    microscope_focus_jog_steps_per_sec: 400.0

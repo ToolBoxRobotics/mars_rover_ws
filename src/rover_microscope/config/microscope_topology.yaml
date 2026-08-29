@@ -1,0 +1,33 @@
+# Microscope Uno #4, mounted at the arm's 3rd wrist joint.
+#   * 24BYJ-48 stepper + DRV8825 driver for combined focus/zoom (a
+#     single mechanical axis - see rover_microscope README note if
+#     focus and zoom turn out to need independent steppers). Motor is
+#     wired 4-wire bipolar (center-tap disconnected) - see
+#     microscope_uno4.ino's header comment before wiring this up.
+#   * 5V dimmable LED ring light
+#   * SG90 micro servo operating a sliding lens cover
+#   * USB camera (separate from the Uno; captured directly by the
+#     host over OpenCV, not routed through the Arduino)
+#
+# No command_timeout_sec here, unlike this project's other bridge
+# nodes with one - this board used to force the LED off and the cover
+# closed whenever the command stream went stale, removed at the
+# user's own explicit request (see microscope_bridge_node.py's own
+# _on_timer() and microscope_uno4.ino's header comment for the full
+# reasoning and the trade-off this carries). Not an oversight.
+rover_microscope_bridge:
+  ros__parameters:
+    serial_port: "/dev/rover/microscope"
+    serial_baud: 115200
+    boot_grace_sec: 2.0            # Arduino resets on connect; ignore I/O until it reboots
+    control_rate_hz: 10.0
+
+microscope_camera:
+  ros__parameters:
+    camera_device: "/dev/rover/microscope_cam"   # stable udev symlink, see README
+    frame_width: 1280
+    frame_height: 720
+    frame_rate_hz: 15.0
+    jpeg_quality: 80
+    snapshot_dir: "~/rover_captures/microscope/snapshots"
+    recording_dir: "~/rover_captures/microscope/recordings"

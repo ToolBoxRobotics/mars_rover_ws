@@ -1,0 +1,15 @@
+# Moves the arm to one of three predefined poses - used by the web
+# GUI's INITIAL POSITION / TRANSPORT POSITION / SERVICE POSITION
+# buttons. The actual joint-angle targets for each preset are fixed
+# constants in arm_mega2.ino (kInitialPoseSteps/kTransportPoseSteps/
+# kServicePoseSteps), not sent in this request - this just selects
+# which one. Subject to the same "fully homed, not mid-homing, not
+# e-stopped" gate as a regular joint command - see arm_mega2.ino's
+# handlePresetRequest().
+#
+# Request
+uint8 preset    # 0 = initial, 1 = transport, 2 = service - see rover_arm's arm_protocol.py for the matching PRESET_* constants
+---
+# Response
+bool accepted   # false if rejected - see message for why
+string message  # human-readable detail (e.g. "moving to transport position", "rejected: preset out of range", "rejected: write to serial link failed (port not open?)")

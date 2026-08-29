@@ -1,0 +1,17 @@
+# Shared "how fast can any input device command the rover" values.
+#
+# Used by BOTH the physical Xbox controller (xbox_teleop_node) and the
+# web GUI's virtual joystick (rover_web_gui) via ROS 2's `/**` wildcard,
+# which applies these parameters to any node that loads this file
+# regardless of that node's own name - the two control surfaces have
+# different node names, so a normal `<node_name>:` block would only
+# ever match one of them. Edit this ONE file to change sensitivity for
+# both input devices at once, instead of two separately hardcoded
+# values silently drifting apart (which is exactly what had happened
+# before this file existed - the web GUI's app.js had its own
+# hardcoded copy of these same two numbers).
+/**:
+  ros__parameters:
+    max_linear_mps: 0.65
+    max_angular_radps: 1.5
+    deadzone: 0.12

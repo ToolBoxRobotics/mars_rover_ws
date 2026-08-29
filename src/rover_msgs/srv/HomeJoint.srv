@@ -1,0 +1,10 @@
+# Triggers the arm's calibration-switch homing sequence on demand
+# (rather than only once at bridge startup) - used by the web GUI's
+# per-joint calibration buttons and its "calibrate all 5" button.
+#
+# Request
+int8 joint_index    # -1 = home all 5 joints in sequence, 0-4 = home just that one joint
+---
+# Response
+bool accepted        # false if rejected - see message for why
+string message        # human-readable detail (e.g. "homing joint 2 (elbow_pitch)", "rejected: homing already in progress", "rejected: joint_index out of range")
