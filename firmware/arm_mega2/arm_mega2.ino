@@ -1,92 +1,4 @@
 // arm_mega2.ino
-//
-// Arduino Mega #2 - 5-axis robotic arm controller.
-//   * Mixed stepper drivers per joint: J1 (shoulder_yaw), J2
-//     (shoulder_pitch), and J3 (elbow_pitch) use TB6600; J4
-//     (wrist_pitch) and J5 (wrist_roll) still use A4988. Each TB6600
-//     gets its own independent enable pin (see kTb6600EnablePin's own
-//     comment for why - not shared the way the mast's two TB6600s
-//     are); the two remaining A4988s still share one enable pin
-//     between themselves, same as all five used to share before this
-//     change. PUL/DIR (TB6600) and STEP/DIR (A4988) are functionally
-//     identical from AccelStepper's perspective, so kStepPin/kDirPin
-//     below are unchanged and apply uniformly across all 5 joints
-//     regardless of which driver type is actually behind them.
-//   * 5x calibration (limit) switches, one per joint, used to home the
-//     arm to a known zero position - homing can run against all 5
-//     joints in one sequential pass (mirroring the original startup
-//     behavior) or against a single joint on its own, selected via a
-//     parameter on the 'Z' frame (see handleHomeRequest()) - re-homing
-//     just one joint doesn't disturb the others' already-established
-//     zero or homed status. Every joint must be individually homed
-//     before ANY joint-move command is accepted, though - see
-//     handleJointCommand()'s own comment for why partial-homed motion
-//     isn't supported.
-//
-//     UPDATED: per-joint homing direction (kHomingDirection), the
-//     order joints are homed in during an all-5 run (kHomingOrder),
-//     and a per-joint post-limit-switch offset (kHomingOffsetSteps)
-//     are all now independently configurable constants, not hardcoded
-//     assumptions - see each constant's own comment below for the
-//     full reasoning. All three are PLACEHOLDER values pending real
-//     mechanical verification on the bench, same status as every
-//     other uncalibrated constant in this project - kHomingDirection
-//     defaults to the previous, only behavior (all 5 joints seek in
-//     the same, negative direction); kHomingOrder defaults to the
-//     previous, only order (J1 through J5, sequentially);
-//     kHomingOffsetSteps defaults to zero for all 5 (meaning "the
-//     limit switch's own physical trigger point IS zero", the
-//     previous, only behavior).
-//
-//     Also added: three predefined poses (kInitialPoseSteps,
-//     kTransportPoseSteps, kServicePoseSteps), each an ALL-PLACEHOLDER
-//     (all-zero) five-joint target set pending real-world calibration,
-//     reachable via a new 'P' frame (see handlePresetRequest()) -
-//     gated by the same "fully homed, not mid-homing" requirement as
-//     a regular 'A' command, and additionally blocked while an
-//     emergency stop is latched (see below).
-//
-//     Also added: a latching emergency stop, triggered/cleared via a
-//     new 'X' frame (see handleEmergencyStop()). Deliberately does
-//     NOT de-energize the drivers - see that function's own comment
-//     for the full reasoning (a gravity-loaded arm dropping
-//     uncontrolled if de-energized mid-air is a worse outcome than
-//     holding position under load, the same philosophy this file's
-//     own watchdog-timeout behavior already applies at the bottom of
-//     loop()). Once triggered, every source of new movement (regular
-//     joint commands, preset requests) is blocked until an explicit
-//     clear is received - the firmware itself is the source of truth
-//     for this, not the ROS bridge node upstream of it, specifically
-//     so a bridge-node restart or hiccup after an e-stop can't
-//     silently resume motion.
-//   * DS18B20 temperature sensor, TO-92, 1-Wire on a single digital
-//     pin (kDs18b20DataPin, reusing the Mega's former SDA pin 20) -
-//     see base_mega1.ino's own copy of this sensor for the full
-//     reasoning (external pull-up requirement, non-blocking read
-//     state machine, sentinel convention); identical here.
-//   * Cooling fan via a generic N-channel MOSFET driver module - same
-//     automatic, thermostatic design as base_mega1.ino's own copy of
-//     this feature (see that file's header for the full reasoning:
-//     low-side-switch wiring, hysteresis thresholds, fail-toward-
-//     running on sensor failure). Genuine hardware PWM via
-//     analogWrite() on kFanPwmPin (44) - this Mega's 2-13 PWM range is
-//     entirely committed already (every joint's STEP/DIR plus all
-//     three TB6600 enables), so this uses one of the Mega's extra
-//     44-46 PWM pins instead, the same choice base_mega1.ino makes for
-//     the same reason.
-//
-// Talks to the ROS 2 `rover_arm` bridge node using the shared
-// RoverProtocol framing. Requires the AccelStepper library (Library
-// Manager: "AccelStepper" by Mike McCauley), "OneWire" (by Paul
-// Stoffregen), and "DallasTemperature" (by Miles Burton) in addition
-// to RoverProtocol. See base_mega1.ino's own header comment for the
-// DallasTemperature LGPL-2.1 licensing note - a third license
-// alongside this project's own Apache-2.0 and, on the base board,
-// ServoEasing's GPL-3.0.
-//
-// Joint order everywhere below: J1 shoulder_yaw, J2 shoulder_pitch,
-// J3 elbow_pitch, J4 wrist_pitch, J5 wrist_roll (see rover_arm's
-// arm_topology.yaml for the matching ROS-side joint_names list).
 
 #include <AccelStepper.h>
 #include <OneWire.h>
@@ -144,10 +56,10 @@ constexpr int32_t kTemperatureInvalidDeciC = -9999;
 // isn't, but 44 was chosen there too for consistency), so this uses
 // one of the extra 44-46 PWM pins instead.
 constexpr uint8_t kFanPwmPin = 44;
-constexpr int32_t kFanOnTempDeciC = 350;
+constexpr int32_t kFanOnTempDeciC = 320;
 constexpr int32_t kFanOffTempDeciC = 300;
-constexpr int32_t kFanMaxTempDeciC = 500;
-constexpr uint8_t kFanMinDutyPercent = 30;
+constexpr int32_t kFanMaxTempDeciC = 350;
+constexpr uint8_t kFanMinDutyPercent = 90;
 
 AccelStepper joints[kNumJoints] = {
     AccelStepper(AccelStepper::DRIVER, kStepPin[0], kDirPin[0]),
@@ -171,7 +83,7 @@ AccelStepper joints[kNumJoints] = {
 // reduction buys over a lower ratio.
 constexpr float kMaxSpeedStepsPerSec = 2000.0f;
 constexpr float kAccelStepsPerSec2 = 4000.0f;
-constexpr float kHomingSpeedStepsPerSec = 400.0f;
+constexpr float kHomingSpeedStepsPerSec = 1000.0f;
 // Safety cutoff: abort homing a joint that travels this many steps
 // without ever triggering its limit switch (mechanical fault, unplugged
 // switch, etc.) rather than driving it into a hard stop indefinitely.

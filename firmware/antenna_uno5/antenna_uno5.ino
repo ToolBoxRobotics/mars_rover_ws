@@ -1,77 +1,4 @@
 // antenna_uno5.ino
-//
-// Arduino Uno #5 - high-gain-antenna gimbal controller, mounted top
-// rear left of the rover. Modeled on the real Mars Exploration Rover
-// (Spirit/Opportunity) HGA gimbal: a 2-axis pointing mechanism -
-// primary axis G1 (azimuth, normal to the deck) and secondary axis G2
-// (elevation, parallel to the deck) - with the antenna disk on a
-// short arm at the end, beam radiating perpendicular to the disk face.
-// The real HGAG is launch-locked (a pyrotechnic pin puller) and
-// deploys through a one-way spring-loaded gate that widens azimuth's
-// usable range and prevents returning to the stowed position - this
-// board doesn't model the launch/deploy mechanism itself (no
-// pyrotechnics, no gate actuator - out of scope for what's being
-// built here), only the two gimbal axes' *operational*, post-deployment
-// range: azimuth 15-285 deg, elevation 0-180 deg. Those two numbers
-// are what get enforced below (kAzimuthMinDeg/MaxDeg,
-// kElevationMinDeg/MaxDeg) - the spec's other pair of numbers (G1
-// -90/90, G2 90/270) reads as a different reference frame, not a
-// second constraint to reconcile with these; flagged in README rather
-// than guessed into a specific transform.
-//
-//   * 2x NEMA17 + EBA-17-M planetary gearbox (120:1) + TB6600, same
-//     actuator/driver combination as the arm's joints - steps_per_deg
-//     below uses the identical 200 full steps * 1/16 microstepping *
-//     120:1 math as arm_mega2.ino's steps_per_joint_rev, and
-//     kMaxSpeedStepsPerSec/kAccelStepsPerSec2/kHomingSpeedStepsPerSec
-//     are copied directly from there too, not re-guessed - same
-//     actuator, already-vetted numbers, no reason to diverge.
-//     TB6600's PUL/DIR inputs are functionally equivalent to STEP/DIR
-//     for AccelStepper::DRIVER, and its enable pin is shared between
-//     both axes (kGimbalEnablePin) rather than wired independently -
-//     safe here for the same reason the mast's own two TB6600s share
-//     one enable pin (mast_uno3.ino): the current draw of two
-//     opto-isolated ENA inputs on one Arduino GPIO stays comfortably
-//     under a typical pin's safe sink rating, unlike the arm's three
-//     TB6600s, which is why those get independent pins instead.
-//   * 2x calibration switches, one per axis. Each is assumed mounted
-//     at that axis's own operational minimum (15 deg azimuth, 0 deg
-//     elevation) - a real design choice, not verified against any
-//     actual mechanical drawing, flagged here and in README so it's
-//     easy to correct against real hardware. Homing seeks each switch
-//     the same direction arm_mega2.ino/mast_uno3.ino already do, and
-//     because the switch position *is* each axis's minimum rather
-//     than an offset from it, setCurrentPosition() at trigger time
-//     directly establishes "home" - no separate move-to-a-different-
-//     reference step needed the way the mast's corrected calibration
-//     sequence needs one (see mast_uno3.ino's own header comment for
-//     why that axis is different: its switches sit at each axis's
-//     extreme, but "home" for the mast is the *centered* zero, not
-//     the extreme itself - not true here, where the switch position
-//     and the operational minimum are the same point).
-//   * DS18B20 temperature sensor, TO-92, 1-Wire on a single digital
-//     pin (kDs18b20DataPin = A4, reusing the Uno's former I2C SDA
-//     pin) - free, same as every other pin from D9-D13 up (see the
-//     pin section below for why this board's budget was never tight
-//     the way the mast's Uno is). See base_mega1.ino's own copy of
-//     this sensor for the full reasoning (external pull-up
-//     requirement, non-blocking read state machine, sentinel
-//     convention); identical here.
-//   * Cooling fan via a generic N-channel MOSFET driver module - same
-//     automatic, thermostatic design as base_mega1.ino's own copy of
-//     this feature (see that file's header for the full reasoning:
-//     low-side-switch wiring, hysteresis thresholds, fail-toward-
-//     running on sensor failure). Genuine hardware PWM via
-//     analogWrite() on kFanPwmPin (9) - unlike the mast's Uno, this
-//     board's PWM pins (3/5/6/9/10/11) aren't all committed; 3/5/6 are
-//     spoken for (azimuth/elevation DIR, shared gimbal enable), but
-//     9/10/11 are free, so this needs no software-PWM workaround.
-//
-// Talks to the ROS 2 `rover_antenna` bridge node using the shared
-// RoverProtocol framing. Requires the AccelStepper library, "OneWire"
-// (by Paul Stoffregen), and "DallasTemperature" (by Miles Burton) -
-// see base_mega1.ino's own header comment for the DallasTemperature
-// LGPL-2.1 licensing note.
 
 #include <AccelStepper.h>
 #include <OneWire.h>
@@ -109,9 +36,9 @@ constexpr int32_t kTemperatureInvalidDeciC = -9999;
 // fan. kFanPwmPin=9 is a genuinely free hardware PWM pin here, unlike
 // the mast's own copy of this feature, which needed software PWM.
 constexpr uint8_t kFanPwmPin = 9;
-constexpr int32_t kFanOnTempDeciC = 350;
+constexpr int32_t kFanOnTempDeciC = 320;
 constexpr int32_t kFanOffTempDeciC = 300;
-constexpr int32_t kFanMaxTempDeciC = 500;
+constexpr int32_t kFanMaxTempDeciC = 350;
 constexpr uint8_t kFanMinDutyPercent = 30;
 
 AccelStepper azimuthAxis(AccelStepper::DRIVER, kAzimuthStepPin, kAzimuthDirPin);
@@ -136,7 +63,7 @@ constexpr float kElevationMaxDeg = 180.0f;
 // 120:1), already-vetted values, no reason to pick different ones.
 constexpr float kMaxSpeedStepsPerSec = 2000.0f;
 constexpr float kAccelStepsPerSec2 = 4000.0f;
-constexpr float kHomingSpeedStepsPerSec = 400.0f;
+constexpr float kHomingSpeedStepsPerSec = 1000.0f;
 // Safety cutoff: abort homing an axis that travels this many steps
 // without ever triggering its limit switch, rather than driving it
 // indefinitely - same reasoning as arm_mega2.ino/mast_uno3.ino's own
@@ -150,7 +77,7 @@ constexpr float kHomingSpeedStepsPerSec = 400.0f;
 // here.
 constexpr long kHomingMaxTravelSteps = 373333;
 
-bool driversEnabled = false;
+bool driversEnabled = true;
 bool homed = false;
 bool homingInProgress = false;
 int8_t homingAxisIndex = -1;  // 0 = azimuth, 1 = elevation

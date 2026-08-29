@@ -1,119 +1,4 @@
 // microscope_uno4.ino
-//
-// Arduino Uno #4 - microscope module controller, mounted at the arm's
-// 3rd wrist joint alongside the USB microscope camera (the camera
-// itself is captured directly by the host over OpenCV, not wired
-// through this Uno).
-//   * 24BYJ-48 stepper + DRV8825 driver, combined focus/zoom axis
-//     (single mechanical axis - see package README if focus and zoom
-//     need to become independent steppers later). Replaces the
-//     original 28BYJ-48 + ULN2003 pairing.
-//
-//     IMPORTANT WIRING NOTE: the 24BYJ-48 ships as a 5-wire UNIPOLAR
-//     motor (two center-tapped coils), but DRV8825 is a BIPOLAR-only
-//     driver - these are only compatible if the motor is wired in
-//     4-wire bipolar mode: connect only the four coil-end wires to
-//     the driver's two coil outputs (A1/A2, B1/B2), and leave the
-//     center-tap (common) wire completely disconnected - not
-//     grounded, not tied to anything. Connecting the center tap on a
-//     bipolar driver shorts part of that coil and can damage the
-//     driver or motor. This is a known, documented technique (not a
-//     hack specific to this project) but it's an easy wire to
-//     mis-connect, so double-check before powering up. Also needs the
-//     12V-rated 24BYJ-48 variant, not the 5V one - DRV8825 requires
-//     8.2-45V on its motor supply, below which it won't run reliably.
-//     STEP/DIR/ENABLE replace ULN2003's 4-pin phase sequencing - same
-//     AccelStepper::DRIVER interface already used for the arm and
-//     mast, and one fewer pin than before (3 vs 4). Microstepping is
-//     set via DRV8825's own MS1/MS2/MS3 jumpers, not firmware, same
-//     as this project treats A4988/TB6600 elsewhere - kMaxSpeedStepsPerSec
-//     below assumes whatever that jumper setting works out to; revisit
-//     if it's changed.
-//   * 5V dimmable LED ring light (PWM). UPDATED: this board no longer
-//     has any watchdog-triggered "protect the optics" behavior - see
-//     the lens cover bullet immediately below for the full reasoning,
-//     since both were removed together as one change.
-//   * SG90 micro servo operating a sliding lens cover (two-position:
-//     open / closed). UPDATED: no longer via the ServoEasing library -
-//     removed at the user's own request, not because of a technical
-//     incompatibility the way the base's steering servos needed
-//     ServoEasing gone (that library genuinely can't drive a PCA9685;
-//     this servo is still direct-pin, so ServoEasing itself would
-//     have kept working fine here). Smoothed movement is preserved
-//     anyway, reimplemented as the same small, non-blocking custom
-//     ramp base_mega1.ino already uses for steering
-//     (updateCoverEasing() below) - this project has consistently
-//     valued eased servo motion, and there's no reason removing one
-//     specific library should mean losing it, especially for a
-//     physical sliding cover where an instant snap would look and
-//     sound worse than the previous eased motion did. A genuine,
-//     if incidental, side effect worth noting: this was the *last*
-//     file in the project still using ServoEasing (base_mega1.ino's
-//     own steering already moved off it) - removing it here means
-//     this project no longer has any GPL-3.0 dependency anywhere.
-//
-//     UPDATED AGAIN, at the user's own explicit request: this board
-//     used to force the LED off and the cover closed automatically
-//     whenever no command had arrived for over a second (a watchdog-
-//     triggered fail-safe, its own comment literally described as
-//     protecting the optics if the link to the operator dropped).
-//     That entire behavior - and the now-otherwise-unused
-//     lastCommandMillis/kWatchdogTimeoutMs tracking it depended on -
-//     is gone. The LED and cover now stay in whatever state they
-//     were last explicitly commanded to, indefinitely, even if the
-//     serial link to the host is lost entirely. REAL TRADE-OFF, WORTH
-//     KNOWING: if the link drops with the LED on or the cover open,
-//     nothing in this firmware will turn the LED off or close the
-//     cover on its own anymore - that's now entirely on the operator
-//     (or whatever's upstream of this board) to notice and handle,
-//     not a safety net this firmware still provides. The focus
-//     stepper's own behavior on a dropped link is unaffected either
-//     way - it was never part of this watchdog to begin with, and
-//     already just holds its last commanded position with no
-//     separate timeout logic of its own.
-//   * DS18B20 temperature sensor, TO-92, 1-Wire on a single digital
-//     pin (kDs18b20DataPin = 11, previously spare) - see
-//     base_mega1.ino's own copy of this sensor for the full reasoning
-//     (external pull-up requirement, non-blocking read state machine,
-//     sentinel convention); identical here. Added later than the
-//     other four boards' own copies of this sensor - this board was
-//     deliberately excluded from that original session, then added
-//     back once a cooling fan (below) made a temperature input
-//     necessary here too.
-//   * Cooling fan via a generic N-channel MOSFET driver module - same
-//     automatic, thermostatic design as base_mega1.ino's own copy of
-//     this feature (see that file's header for the full reasoning:
-//     low-side-switch wiring, hysteresis thresholds, fail-toward-
-//     running on sensor failure). Genuine hardware PWM via
-//     analogWrite() on kFanPwmPin (3) - this board never had an
-//     FZ0430 voltage sensor, so unlike the other four boards, A0
-//     stays reserved/unused here rather than repurposed; pins 3 and
-//     11 were the two genuinely free PWM-capable pins remaining after
-//     the stepper/LED/servo functions above, no software-PWM
-//     workaround needed.
-//
-// Talks to the ROS 2 `rover_microscope` bridge node using the shared
-// RoverProtocol framing. Requires the AccelStepper library (Library
-// Manager: "AccelStepper" by Mike McCauley) - no longer ServoEasing,
-// see the cover servo bullet above for why. Also requires "OneWire"
-// (by Paul Stoffregen) and "DallasTemperature"
-// (by Miles Burton) for the temperature sensor - see the LICENSING
-// NOTE below.
-// No calibration switch on the focus axis: position is tracked
-// relative to power-on zero, same convention as the mast head axes
-// used before their own calibration switches were added. The 3
-// preset-position "record" buttons on the web GUI are a different
-// thing entirely - remembered positions for convenience, not a
-// physical homing reference - and live entirely in the web GUI's own
-// state, with no firmware or protocol involvement at all.
-//
-// LICENSING NOTE: DallasTemperature is LGPL-2.1, not MIT - see
-// base_mega1.ino's own copy of this same note for the fuller
-// reasoning on why that's worth tracking as its own consideration.
-// This file no longer has a second license to also track here: the
-// ServoEasing/GPL-3.0 note that used to sit alongside this one is
-// gone along with the library itself - see the cover servo bullet
-// above.
 
 #include <AccelStepper.h>
 #include <Servo.h>
@@ -145,16 +30,16 @@ constexpr int32_t kTemperatureInvalidDeciC = -9999;
 // happens to be PWM-capable - no software-PWM workaround needed,
 // same as base/arm/antenna.
 constexpr uint8_t kFanPwmPin = 3;
-constexpr int32_t kFanOnTempDeciC = 350;
+constexpr int32_t kFanOnTempDeciC = 320;
 constexpr int32_t kFanOffTempDeciC = 300;
-constexpr int32_t kFanMaxTempDeciC = 500;
+constexpr int32_t kFanMaxTempDeciC = 350;
 constexpr uint8_t kFanMinDutyPercent = 30;
 
 constexpr float kMaxSpeedStepsPerSec = 500.0f;  // 24BYJ-48 is geared; keep this modest until bench-verified against the actual DIP/jumper microstepping setting
 constexpr float kAccelStepsPerSec2 = 800.0f;
 
-constexpr int kCoverClosedDeg = 0;
-constexpr int kCoverOpenDeg = 90;
+constexpr int kCoverClosedDeg = 41;
+constexpr int kCoverOpenDeg = 146;
 // Slower than the base's steering easing (300 deg/sec) on purpose -
 // this is a binary open/closed toggle triggered rarely, not a
 // continuously-recommanded value, so there's no responsiveness
@@ -180,7 +65,7 @@ float coverTargetDeg = kCoverClosedDeg;
 float coverCurrentDeg = kCoverClosedDeg;
 unsigned long lastCoverEaseMillis = 0;
 bool coverOpenCommanded = false;
-bool driverEnabled = false;
+bool driverEnabled = true;
 uint8_t lastLedPwm = 0;
 
 OneWire oneWire(kDs18b20DataPin);

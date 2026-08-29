@@ -93,10 +93,10 @@ constexpr int32_t kTemperatureInvalidDeciC = -9999;
 // per board only because pin availability differs per board - see
 // this file's own header comment for why 44 specifically here.
 constexpr uint8_t kFanPwmPin = 44;
-constexpr int32_t kFanOnTempDeciC = 350;
+constexpr int32_t kFanOnTempDeciC = 320;
 constexpr int32_t kFanOffTempDeciC = 300;
-constexpr int32_t kFanMaxTempDeciC = 500;
-constexpr uint8_t kFanMinDutyPercent = 30;
+constexpr int32_t kFanMaxTempDeciC = 350;
+constexpr uint8_t kFanMinDutyPercent = 100;
 
 // Motor driver pins: one direction pin (Mx) + one PWM/speed pin (Ex)
 // per DRI0002 channel - see the file header for the M-pin convention
