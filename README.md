@@ -50,6 +50,27 @@ hand-editing placeholders (including an important caveat about the
 three Mega 2560 boards possibly sharing an identical or empty USB
 serial number).
 
+**Wiring diagrams** (`docs/diagrams/`) — system-level connection maps
+and per-board pinouts, generated directly from the actual firmware
+constants (`kMotorPwm`, `kStepPin`, etc.) rather than drawn from
+memory:
+
+| Diagram | Covers |
+|---|---|
+| [`01_system_overview_boards.svg`](docs/diagrams/01_system_overview_boards.svg) | Host → four Arduino boards, USB serial |
+| [`02_system_overview_sensors.svg`](docs/diagrams/02_system_overview_sensors.svg) | Host → IMU, GPS, LIDAR, cameras (no Arduino) |
+| [`03_base_mega1_wiring.svg`](docs/diagrams/03_base_mega1_wiring.svg) | 6 drive motors (3x DRI0002), 4 steering servos, ML/MR encoders, FZ0430 voltage sensor |
+| [`04_arm_mega2_wiring.svg`](docs/diagrams/04_arm_mega2_wiring.svg) | 5 joint steppers (A4988), shared enable, 5 limit switches, FZ0430 voltage sensor |
+| [`05_mast_uno3_wiring.svg`](docs/diagrams/05_mast_uno3_wiring.svg) | Head yaw/pitch steppers (TB6600 driver) with calibration switches, HW-039 lift driver, 4 limit switches, FZ0430 voltage sensor |
+| [`06_microscope_uno4_wiring.svg`](docs/diagrams/06_microscope_uno4_wiring.svg) | Focus stepper, LED, lens cover servo |
+
+These show pin groupings and counts, not exact per-pin schematics —
+cross-reference the exact pin constants in each board's `.ino` file
+(linked from the hardware topology table above) before wiring, and see
+that same file's header comment for power-supply notes (the DRI0002
+logic-jumper caveat, servo power needing a separate 5-6V rail, the
+lift motor's different dual-direction-pin H-bridge convention) that
+don't fit in a pin-level diagram.
 
 ## Package map
 
@@ -358,11 +379,11 @@ safer. `ArmState.homed` (`bool`) is `all(joint_homed)`, computed by
 MoveIt's `trajectory_action_server` (which already gated goals on this
 exact field) needed no changes for this to work.
 
-### Configurable per-joint homing direction, order, and offset
+### Configurable per-joint homing direction and order
 
-Three things about the homing process that used to be a single,
-uniform assumption applied to all five joints are now independently
-configurable per joint, as constants in `arm_mega2.ino` — all three
+Two things about the homing process that used to be a single, uniform
+assumption applied to all five joints are now independently
+configurable per joint, as constants in `arm_mega2.ino` — both
 currently PLACEHOLDER values matching the previous, only behavior,
 pending real mechanical verification on the bench:
 
@@ -378,23 +399,86 @@ pending real mechanical verification on the bench:
   partway through the sweep). Only affects the all-5 case — a
   single-joint request (0-4) always just homes that one joint,
   unaffected by this order.
-- **`kHomingOffsetSteps[5]`** — the distance, in steps, from where a
-  limit switch physically trips to that joint's own actual defined
-  zero. Previously always zero (the limit switch's own trigger point
-  *was* zero, unconditionally). Real limit switches are rarely mounted
-  exactly at a joint's intended zero reference; each joint now seeks
-  its physical switch, then moves the remaining distance to its true
-  reference position — the same "seek limit, then move to true zero"
-  pattern `mast_uno3.ino`'s and `antenna_uno5.ino`'s own post-
-  calibration sequences already use, applied here per-joint via a
-  genuine non-blocking two-phase state machine (seeking vs. moving-to-
-  offset, checked every `loop()` iteration) rather than a blocking
-  wait.
 
-None of these are sent over the wire or configurable from the web GUI
-— they're physical-calibration facts about the hardware itself, set
-once in firmware to match the real joints, not something an operator
+Neither is sent over the wire or configurable from the web GUI —
+they're physical-calibration facts about the hardware itself, set once
+in firmware to match the real joints, not something an operator
 chooses per homing run.
+
+### Steps-per-degree, the real lower limit, and the operational range
+
+What this file used to call an "offset" (`kHomingOffsetSteps` — a
+small, per-joint, separately-tuned distance from an assumed-zero
+switch position to a joint's true reference point) has been replaced
+entirely by a physically-grounded model, not just renamed. Three new
+constants, none of them invented fresh — all three sourced directly
+from numbers this project had already established elsewhere:
+
+- **`kStepsPerDegree[5]`** — derived from, and must be kept in sync
+  with, `rover_arm/config/arm_topology.yaml`'s own
+  `steps_per_joint_rev` (currently 384000 for all five: 200 full steps
+  × 1/16 microstepping × 120:1 EBA-17-M planetary gearbox — see that
+  file's own comment). 384000 / 360 ≈ 1066.667 steps/degree.
+- **`kMinDeg[5]` / `kMaxDeg[5]`** — each joint's own operational range
+  in degrees, relative to true center. Sourced directly from
+  `rover_description/urdf/arm.xacro`'s own joint `<limit>` tags
+  (shoulder_yaw/elbow_pitch: ±150°, shoulder_pitch/wrist_pitch: ±100°,
+  wrist_roll: ±170°) — the same numbers MoveIt itself already plans
+  against, not a separately-guessed pair.
+- **`kLowerLimitSteps[5]`** — the value assigned via
+  `setCurrentPosition()` the instant a joint's limit switch trips. The
+  limit switch's own physical trigger point is now understood to sit
+  at each joint's own operational lower bound, not at an arbitrary
+  "zero" the way `kHomingOffsetSteps` treated it. PLACEHOLDER values
+  currently assume the switch sits exactly at `kMinDeg[j]` (converted
+  to steps, rounded) — a reasonable starting assumption, not a
+  bench-verified one. Kept independently adjustable from `kMinDeg` in
+  code (not derived from it), so a real mechanical safety margin
+  between "where the switch actually trips" and "the joint's own
+  declared operational minimum" can be introduced later without
+  touching either constant's own meaning.
+
+Once the switch trips and `kLowerLimitSteps[j]` is assigned,
+`serviceHoming()`'s own two-phase state machine (`SEEKING_LIMIT` →
+`MOVING_TO_CENTER`, renamed from the old model's `MOVING_TO_OFFSET`
+now that the destination is always exactly 0, not a per-joint tuned
+value) drives the remaining distance to absolute step 0 using the
+normal accel/speed profile — 0 now means each joint's own true center,
+not an arbitrary reference point. This is still the same "seek limit,
+then move to a real reference position" pattern `mast_uno3.ino`'s and
+`antenna_uno5.ino`'s own post-calibration sequences use, just now
+landing on a physically meaningful center rather than an arbitrary
+offset destination.
+
+**Every regular joint command, and every preset move, is now clamped**
+to `[kMinDeg, kMaxDeg]` (converted to steps via `kStepsPerDegree`)
+before being accepted — `clampToOperationalRange()`, applied at both
+call sites. This is a real, firmware-side backstop, not merely a
+courtesy: since MoveIt already plans within these same limits (sourced
+from the same `arm.xacro`), this should rarely if ever actually clamp
+anything reaching the firmware via a MoveIt-planned trajectory — it
+exists for whatever else might reach it: a raw command from the web
+GUI's own sliders, a hand-typed test frame, a future client with no
+knowledge of these limits at all. The web GUI's own 5 joint sliders
+were updated to match these same real bounds (`±160000` / `±106667` /
+`±181333` steps) as a UI-side backstop alongside the firmware's own,
+replacing an old, disconnected `±16000` placeholder that turned out to
+trace back to the same stale 5:1 gear-ratio assumption `arm_topology.yaml`
+had already moved past.
+
+**Keeping these numbers in sync matters for a real reason, not just
+tidiness**: a mismatch between `arm.xacro`'s own limits and this
+firmware's `kMinDeg`/`kMaxDeg` would mean MoveIt could plan a
+trajectory this firmware's own clamp then silently truncates — the arm
+would quietly stop short of where MoveIt believes it commanded it to
+go. There's no automatic single source of truth across the
+URDF/firmware/ROS-config/browser boundary here — `arm.xacro`'s own
+`<limit>` tags, `arm_topology.yaml`'s own `steps_per_joint_rev`,
+`arm_mega2.ino`'s own `kStepsPerDegree`/`kMinDeg`/`kMaxDeg`/
+`kLowerLimitSteps`, and the web GUI's own slider bounds are four
+separate places carrying related numbers that all need updating
+together by hand if any of them ever change.
+
 
 ### Predefined poses
 
@@ -459,7 +543,12 @@ Web GUI (arm panel): `CALIBRATE J1`-`CALIBRATE J5` for a single joint,
 the arm's predefined starting pose (a preset move, not a calibration
 action — only meaningful once actually homed, and safely a no-op
 otherwise since the firmware ignores it like any other joint command
-would be).
+would be). Driver enable/disable is a single toggle (label and color
+both follow the firmware's own reported `drivers_enabled` state, not
+a locally-tracked guess) — this brings the arm in line with the same
+toggle convention the mast, antenna, and microscope panels already use
+for their own driver control; the arm was the one panel still using
+two separate buttons for it before this.
 
 Directly:
 ```bash
@@ -554,6 +643,99 @@ would be a much less natural control feel here.
 These are the calls made where the spec was silent or where
 "simplify" pointed toward a lighter-weight choice. Flag any of these
 back if they don't match the real hardware:
+
+- **Arm: driver-enable state is now real telemetry, not just a
+  command the host remembers sending - and the web GUI's own button
+  for it changed from two to one to match.** `arm_mega2.ino`'s own
+  `driversEnabled` was already tracked internally; it just never made
+  it into the outgoing `'S'` frame, so the only place that state
+  existed was whatever the host last commanded via the `'A'` frame's
+  own `enable` field. That gap was real, not hypothetical:
+  `startHoming()` enables drivers automatically before seeking, with
+  no operator action involved, so a value the web GUI only remembered
+  sending would have silently drifted out of sync with reality the
+  moment homing started on its own. Added `drivers_enabled` as a new,
+  20th field on the `'S'` frame (threaded through the protocol layer,
+  `ArmState.msg`, the bridge node, and the web GUI's own state dict) so
+  this is now the firmware's own actual, current state, always - not a
+  command echo.
+
+  The web GUI's own two separate buttons (`ENABLE DRIVERS` /
+  `DISABLE (FREE-SPIN)`) became one toggle, at the user's own explicit
+  request - and this turned out to be less a departure from this
+  project's own convention than a correction of one: the mast, antenna,
+  and microscope panels already use a single `CLOSE DRIVER (ENABLE)` /
+  `OPEN DRIVER (DISABLE)` toggle for the exact same kind of state; the
+  arm was the one panel still using two separate buttons for it. Kept
+  the arm's own, more explicit wording (`ENABLE DRIVERS` /
+  `DISABLE DRIVERS (FREE-SPIN)`, the button's own label switching with
+  the state rather than the other three panels' `CLOSE`/`OPEN`
+  phrasing) since the free-spin consequence is a genuinely useful thing
+  to say out loud for a 5-joint arm specifically, not just tidied away
+  for consistency's sake - the toggle *mechanism* is what needed to
+  match, not necessarily the exact words. The button's label and color
+  both follow `data.arm.drivers_enabled` from live telemetry on every
+  render, the same "driven by the firmware's own reported state, not a
+  locally-tracked guess" approach already used for this panel's own
+  E-STOP status readout.
+
+  Verified this compiles cleanly against the real toolchain before
+  calling it done, not just reviewed by eye: installed the actual AVR
+  cross-compiler (`gcc-avr`, matching the Arduino IDE's own
+  Atmel-flavored 7.3.0) plus `ArduinoCore-avr`, `AccelStepper`,
+  `OneWire`, and `DallasTemperature` from their real source
+  repositories, and compiled `arm_mega2.ino` with `-Wall` - zero
+  errors, zero warnings, both before and after this session's own
+  change to `sendStateFrame()`.
+
+- **Arm: a physically-grounded homing/coordinate model replacing an
+  arbitrary one, and a real operational-range clamp - sourced from
+  numbers this project had already established, not invented fresh.**
+  Full technical detail lives in "Arm calibration" above (see
+  "Steps-per-degree, the real lower limit, and the operational range");
+  this entry is about the sourcing decision itself, which is the part
+  most worth flagging back if it's wrong.
+
+  Rather than invent placeholder degree/range numbers the way most of
+  this project's other uncalibrated constants default (all-zero, or
+  "matches the previous behavior exactly"), this instead reused two
+  sets of numbers this project already had on record before this
+  session touched anything: `rover_arm/config/arm_topology.yaml`'s own
+  `steps_per_joint_rev` (384000, already correctly reflecting the
+  120:1 gearbox) for `kStepsPerDegree`, and
+  `rover_description/urdf/arm.xacro`'s own joint `<limit>` tags (±150°/
+  ±100°/±150°/±100°/±170°) for `kMinDeg`/`kMaxDeg` - both were real,
+  specific, already-intentional values, not placeholders themselves,
+  so treating them as placeholders here and inventing different
+  numbers would have created a genuine inconsistency (MoveIt planning
+  against one set of limits while the firmware clamped against
+  another) rather than resolved one. `kLowerLimitSteps` (what the
+  limit switch's own trigger point gets labeled as) uses the same
+  numbers as `kMinDeg`, converted to steps, as its own placeholder -
+  physically reasonable (switch mounted right at the operational
+  minimum) but not itself bench-verified, and kept as an independently
+  adjustable constant rather than computed from `kMinDeg` in code, so
+  a real mechanical margin between the two can be introduced later
+  without changing what either constant means.
+
+  Found and fixed two genuine, unrelated staleness issues while
+  sourcing these numbers, both traced to the same root: a stale 5:1
+  gear-ratio assumption (200 full steps × 1/16 microstepping × 5:1 =
+  16000) that predated this project's move to the real 120:1 EBA-17-M
+  gearbox (384000) but was never fully swept away. `joint_conversion.py`'s
+  own module docstring still cited the old 16000 figure; the web GUI's
+  5 joint sliders still used a `±16000` bound that turned out to be
+  exactly one motor revolution's worth of steps at that same old ratio
+  - both fixed, the sliders updated to the real, `arm.xacro`-derived
+  bounds (`±160000`/`±106667`/`±181333` steps) as a UI-side backstop
+  alongside the firmware's own new clamp, not a replacement for it.
+
+  A historical "Explicit assumptions" bullet from an earlier session
+  (this file's own "Calibration direction, order, and post-limit-
+  switch offset..." entry, further below) referenced
+  `kHomingOffsetSteps` by name - since that constant no longer exists,
+  updated that entry in place to redirect here rather than leave it
+  factually describing code that isn't there anymore.
 
 - **The actual root cause of base/arm never showing telemetry in the
   web GUI - found only after ruling out the firmware, the physical
@@ -688,20 +870,22 @@ back if they don't match the real hardware:
   it, specifically so a bridge-node restart or hiccup after an e-stop
   can't silently resume motion.
 
-  **Calibration direction, order, and post-limit-switch offset are now
-  independently configurable per joint, all as PLACEHOLDER firmware
-  constants** (`kHomingDirection`, `kHomingOrder`, `kHomingOffsetSteps`
-  in `arm_mega2.ino`) pending real mechanical verification on the
-  bench - each currently set to match the previous, only behavior
-  (uniform direction, sequential J1-J5 order, zero offset) rather than
-  a guessed-at "improved" default. The offset specifically follows the
-  same "seek the physical limit switch, then move the remaining
-  distance to the joint's own true reference position" pattern already
-  used by mast_uno3.ino's and antenna_uno5.ino's own post-calibration
-  sequences - implemented here as a genuine non-blocking two-phase
-  state machine per joint (seeking vs. moving-to-offset), not a
-  blocking wait, matching this project's consistent firmware
-  architecture throughout.
+  **Calibration direction and order are now independently configurable
+  per joint, as PLACEHOLDER firmware constants** (`kHomingDirection`,
+  `kHomingOrder` in `arm_mega2.ino`) pending real mechanical
+  verification on the bench - each currently set to match the
+  previous, only behavior (uniform direction, sequential J1-J5 order)
+  rather than a guessed-at "improved" default.
+
+  **UPDATE (later session): the post-limit-switch "offset" this bullet
+  originally described here has since been replaced entirely, not
+  merely adjusted** - `kHomingOffsetSteps` no longer exists.
+  `kLowerLimitSteps`, `kMinDeg`/`kMaxDeg`, and `kStepsPerDegree` took
+  its place, along with a firmware-side clamp on every joint command
+  and preset move - see "Steps-per-degree, the real lower limit, and
+  the operational range" above for the complete, current model; not
+  duplicated here to avoid two descriptions drifting apart from each
+  other over time.
 
   **Three predefined poses (initial/transport/service), reachable via
   a new firmware-level command, not just a web-GUI convenience.** All
