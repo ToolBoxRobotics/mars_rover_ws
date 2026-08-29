@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Microscope / Ground Control</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  body { padding: 24px; max-width: 900px; margin: 0 auto; }
+  .video-frame { max-width: 100%; }
+  .top-row { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .top-row a.tab-link { margin-left: auto; }
+</style>
+</head>
+<body>
+  <div class="top-row">
+    <div class="wordmark">MICROSCOPE <span>// 3RD WRIST / UNO #4</span></div>
+    <a class="tab-link" href="/" >&larr; Back to ground control</a>
+  </div>
+
+  <div class="video-frame">
+    <span class="video-label">MICROSCOPE CAM</span>
+    <img src="/video/microscope" alt="Microscope camera feed">
+  </div>
+
+  <div class="panel-card controls-row" style="margin-top:16px;">
+    <div class="slider-block">
+      <label>FOCUS / ZOOM <output id="scope-focus-out">0</output></label>
+      <input type="range" id="scope-focus" min="-4000" max="4000" value="0">
+      <label>LED BRIGHTNESS <output id="scope-led-out">0</output></label>
+      <input type="range" id="scope-led" min="0" max="255" value="0">
+    </div>
+    <div class="slider-block">
+      <button class="btn" id="scope-driver">CLOSE DRIVER (ENABLE)</button>
+      <button class="btn" id="scope-cover">OPEN COVER</button>
+      <button class="btn" id="scope-snapshot">TAKE SNAPSHOT</button>
+      <button class="btn" id="scope-record">START RECORDING</button>
+      <span class="deadman-hint" id="scope-action-status"></span>
+    </div>
+    <div class="slider-block">
+      <label>FOCUS PRESETS</label>
+      <div class="controls-row">
+        <button class="btn" id="scope-preset-record-0">RECORD 1</button>
+        <button class="btn" id="scope-preset-goto-0">GO TO 1</button>
+        <span class="deadman-hint" id="scope-preset-status-0">empty</span>
+      </div>
+      <div class="controls-row">
+        <button class="btn" id="scope-preset-record-1">RECORD 2</button>
+        <button class="btn" id="scope-preset-goto-1">GO TO 2</button>
+        <span class="deadman-hint" id="scope-preset-status-1">empty</span>
+      </div>
+      <div class="controls-row">
+        <button class="btn" id="scope-preset-record-2">RECORD 3</button>
+        <button class="btn" id="scope-preset-goto-2">GO TO 3</button>
+        <span class="deadman-hint" id="scope-preset-status-2">empty</span>
+      </div>
+    </div>
+  </div>
+
+  <dl class="telemetry" id="scope-telemetry" style="margin-top:16px;">
+    <dt>FOCUS POS</dt><dd id="tel-focus">--</dd>
+    <dt>LED PWM</dt><dd id="tel-led">--</dd>
+    <dt>COVER</dt><dd id="tel-cover">--</dd>
+    <dt>DRIVER</dt><dd id="tel-driver">--</dd>
+  </dl>
+
+<script src="/static/microscope.js"></script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mars Rover / Ground Control</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="console">
+
+  <header class="topbar">
+    <div class="wordmark">TOOLBOX ROBOTICS <span>// GROUND CONTROL</span></div>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="link-status" id="ws-status">&#9679; LINK DOWN</div>
+  </header>
+
+  <aside class="rail rail-left">
+    <h2>Subsystems</h2>
+    <div class="lamp-list" id="board-lamps">
+      <div class="lamp-row"><span class="lamp"></span><span class="lamp-label">BASE / MEGA #1</span></div>
+      <div class="lamp-row"><span class="lamp"></span><span class="lamp-label">ARM / MEGA #2</span></div>
+      <div class="lamp-row"><span class="lamp"></span><span class="lamp-label">MAST / UNO #3</span></div>
+      <div class="lamp-row"><span class="lamp"></span><span class="lamp-label">SCOPE / UNO #4</span></div>
+      <div class="lamp-row"><span class="lamp"></span><span class="lamp-label">ANTENNA / UNO #5</span></div>
+      <div class="lamp-row"><span class="lamp"></span><span class="lamp-label">POWER / UNO #6</span></div>
+    </div>
+    <h2>Links</h2>
+    <p class="deadman-hint">
+      Xbox 360 teleop and this console publish to the same command
+      topics. Whichever sends last wins - avoid driving from both at once.
+    </p>
+    <a class="tab-link" href="/microscope" target="_blank" rel="noopener">Open microscope view in new tab &rarr;</a>
+  </aside>
+
+  <main class="main-panel">
+    <nav class="mode-switch" id="mode-switch">
+      <button data-mode="drive" class="active">DRIVE</button>
+      <button data-mode="arm">ARM</button>
+      <button data-mode="mast">MAST</button>
+      <button data-mode="microscope">MICROSCOPE</button>
+      <button data-mode="antenna">ANTENNA</button>
+      <div class="mode-switch-highlight"></div>
+    </nav>
+
+    <!-- DRIVE -->
+    <section class="mode-panel" data-mode-panel="drive">
+      <div class="video-frame">
+        <span class="video-label">MAIN CAM</span>
+        <img src="/video/main" alt="Main camera feed">
+      </div>
+      <div class="panel-card">
+        <div class="controls-row" style="margin-bottom:14px;">
+          <button class="btn geometry-btn active" data-geometry="0">ACKERMANN</button>
+          <button class="btn geometry-btn" data-geometry="1">POINT-TURN</button>
+          <button class="btn danger geometry-btn" data-geometry="2">STOP</button>
+        </div>
+        <div class="controls-row">
+          <div class="joystick-wrap">
+            <div class="joystick-base" id="joystick-base">
+              <div class="joystick-handle" id="joystick-handle"></div>
+            </div>
+          </div>
+          <div class="slider-block">
+            <label>MODE <output id="drive-geometry-out">ACKERMANN</output></label>
+            <label id="drive-axis-1-label">LINEAR X <output id="drive-linear-out">0.00 m/s</output></label>
+            <label id="drive-axis-2-label">ANGULAR Z <output id="drive-angular-out">0.00 rad/s</output></label>
+            <p class="deadman-hint">Drag within the circle - proportional to how far you push, just like the physical controller's stick. Release to stop. POINT-TURN reinterprets the same joystick (left/right only) - see README for the hardware caveat.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARM -->
+    <section class="mode-panel" data-mode-panel="arm" hidden>
+      <div class="panel-card">
+        <div class="controls-row">
+          <button class="btn estop" id="arm-estop-engage">E-STOP</button>
+          <button class="btn" id="arm-estop-clear">CLEAR E-STOP</button>
+          <span class="deadman-hint" id="arm-estop-status"></span>
+        </div>
+        <div class="controls-row" style="margin-top:14px;">
+          <div class="slider-block"><label>J1 SHOULDER YAW <output id="arm-joint-0-out">0</output></label>
+            <input type="range" min="-16000" max="16000" value="0" data-joint-index="0"></div>
+          <div class="slider-block"><label>J2 SHOULDER PITCH <output id="arm-joint-1-out">0</output></label>
+            <input type="range" min="-16000" max="16000" value="0" data-joint-index="1"></div>
+          <div class="slider-block"><label>J3 ELBOW PITCH <output id="arm-joint-2-out">0</output></label>
+            <input type="range" min="-16000" max="16000" value="0" data-joint-index="2"></div>
+          <div class="slider-block"><label>J4 WRIST PITCH <output id="arm-joint-3-out">0</output></label>
+            <input type="range" min="-16000" max="16000" value="0" data-joint-index="3"></div>
+          <div class="slider-block"><label>J5 WRIST ROLL <output id="arm-joint-4-out">0</output></label>
+            <input type="range" min="-16000" max="16000" value="0" data-joint-index="4"></div>
+        </div>
+        <div class="controls-row" style="margin-top:14px;">
+          <button class="btn primary" id="arm-enable">ENABLE DRIVERS</button>
+          <button class="btn danger" id="arm-disable">DISABLE (FREE-SPIN)</button>
+        </div>
+        <div class="controls-row" style="margin-top:14px;">
+          <button class="btn" id="arm-cal-0">CALIBRATE J1</button>
+          <button class="btn" id="arm-cal-1">CALIBRATE J2</button>
+          <button class="btn" id="arm-cal-2">CALIBRATE J3</button>
+          <button class="btn" id="arm-cal-3">CALIBRATE J4</button>
+          <button class="btn" id="arm-cal-4">CALIBRATE J5</button>
+        </div>
+        <div class="controls-row" style="margin-top:14px;">
+          <button class="btn primary" id="arm-cal-all">CALIBRATE ALL 5</button>
+          <button class="btn" id="arm-preset-initial">INITIAL POSITION</button>
+          <button class="btn" id="arm-preset-transport">TRANSPORT POSITION</button>
+          <button class="btn" id="arm-preset-service">SERVICE POSITION</button>
+          <span class="deadman-hint" id="arm-action-status"></span>
+        </div>
+        <p class="deadman-hint">Targets are motor steps from the homed zero. Joint moves are ignored until every joint is individually calibrated - use the buttons above on demand, or wait for the automatic all-5 calibration this board also runs once at startup. The three preset buttons (INITIAL/TRANSPORT/SERVICE POSITION) currently all move to the same all-zero pose - real, distinct poses for each are pending bench calibration in arm_mega2.ino's own firmware constants.</p>
+      </div>
+    </section>
+
+    <!-- MAST -->
+    <section class="mode-panel" data-mode-panel="mast" hidden>
+      <div class="panel-card controls-row">
+        <div class="slider-block">
+          <label>HEAD YAW <output id="mast-yaw-out">0.0&deg;</output></label>
+          <input type="range" id="mast-yaw" min="-1700" max="1700" value="0">
+          <label>HEAD PITCH <output id="mast-pitch-out">0.0&deg;</output></label>
+          <input type="range" id="mast-pitch" min="-1800" max="1800" value="0">
+        </div>
+        <div class="slider-block">
+          <button class="btn primary" id="mast-erect">ERECT (SERVICE)</button>
+          <button class="btn" id="mast-stow">STOW (TRANSPORT)</button>
+          <button class="btn" id="mast-driver">CLOSE DRIVER (ENABLE)</button>
+        </div>
+        <div class="slider-block">
+          <button class="btn" id="mast-return-home">RETURN HOME</button>
+          <button class="btn" id="mast-transport-position">TRANSPORT POSITION</button>
+          <span class="deadman-hint" id="mast-action-status"></span>
+        </div>
+        <p class="deadman-hint">Return Home sends the head to 0&deg;/0&deg;. Transport Position sends it to whatever's configured in mast_topology.yaml's transport_head_yaw_deg/transport_head_pitch_deg - not necessarily the same as 0/0, and doesn't touch the lift by itself, so sequence with Stow (Transport) above as your own setup needs. After calibration finishes, the head automatically sweeps to a verification position, returns to 0&deg;/0&deg;, and disables its own drivers - "CLOSE DRIVER (ENABLE)" re-enables them for manual control afterward.</p>
+      </div>
+    </section>
+
+    <!-- MICROSCOPE -->
+    <section class="mode-panel" data-mode-panel="microscope" hidden>
+      <div class="video-frame">
+        <span class="video-label">MICROSCOPE CAM</span>
+        <img src="/video/microscope" alt="Microscope camera feed">
+      </div>
+      <div class="panel-card controls-row">
+        <div class="slider-block">
+          <label>FOCUS / ZOOM <output id="scope-focus-out">0</output></label>
+          <input type="range" id="scope-focus" min="-4000" max="4000" value="0">
+          <label>LED BRIGHTNESS <output id="scope-led-out">0.00V</output></label>
+          <input type="range" id="scope-led" min="0" max="255" value="0">
+        </div>
+        <div class="slider-block">
+          <button class="btn" id="scope-driver">CLOSE DRIVER (ENABLE)</button>
+          <button class="btn" id="scope-cover-open">OPEN COVER</button>
+          <button class="btn" id="scope-cover-close">CLOSE COVER</button>
+          <button class="btn" id="scope-led-on">LED ON</button>
+          <button class="btn" id="scope-led-off">LED OFF</button>
+          <button class="btn" id="scope-snapshot">TAKE SNAPSHOT</button>
+          <button class="btn" id="scope-record">START RECORDING</button>
+          <span class="deadman-hint" id="scope-action-status"></span>
+        </div>
+        <div class="slider-block">
+          <label>FOCUS PRESETS</label>
+          <div class="controls-row">
+            <button class="btn" id="scope-preset-record-0">RECORD 1</button>
+            <button class="btn" id="scope-preset-goto-0">GO TO 1</button>
+            <span class="deadman-hint" id="scope-preset-status-0">empty</span>
+          </div>
+          <div class="controls-row">
+            <button class="btn" id="scope-preset-record-1">RECORD 2</button>
+            <button class="btn" id="scope-preset-goto-1">GO TO 2</button>
+            <span class="deadman-hint" id="scope-preset-status-1">empty</span>
+          </div>
+          <div class="controls-row">
+            <button class="btn" id="scope-preset-record-2">RECORD 3</button>
+            <button class="btn" id="scope-preset-goto-2">GO TO 3</button>
+            <span class="deadman-hint" id="scope-preset-status-2">empty</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANTENNA -->
+    <section class="mode-panel" data-mode-panel="antenna" hidden>
+      <div class="panel-card controls-row">
+        <div class="slider-block">
+          <label>AZIMUTH (G1) <output id="antenna-azimuth-out">15.0&deg;</output></label>
+          <input type="range" id="antenna-azimuth" min="150" max="2850" value="150">
+          <label>ELEVATION (G2) <output id="antenna-elevation-out">0.0&deg;</output></label>
+          <input type="range" id="antenna-elevation" min="0" max="1800" value="0">
+        </div>
+        <div class="slider-block">
+          <button class="btn" id="antenna-driver">CLOSE DRIVER (ENABLE)</button>
+          <span class="deadman-hint" id="antenna-action-status"></span>
+        </div>
+        <p class="deadman-hint">High-gain-antenna gimbal, modeled on the real MER (Spirit/Opportunity) HGA - G1 (azimuth) is normal to the deck, G2 (elevation) is parallel to it. Operational range (15&deg;-285&deg; azimuth, 0&deg;-180&deg; elevation) is a real, bench-confirmed post-deployment limit, not a placeholder - see README's "Explicit assumptions" for the research behind it. Drivers start disabled after homing until you press "CLOSE DRIVER (ENABLE)".</p>
+      </div>
+    </section>
+  </main>
+
+  <aside class="rail rail-right">
+    <h2>IMU</h2>
+    <dl class="telemetry" id="telemetry-imu"><dt>--</dt><dd>--</dd></dl>
+    <h2>GPS</h2>
+    <dl class="telemetry" id="telemetry-gps"><dt>--</dt><dd>--</dd></dl>
+    <h2>Base</h2>
+    <dl class="telemetry" id="telemetry-base"><dt>--</dt><dd>--</dd></dl>
+    <h2>Arm</h2>
+    <dl class="telemetry" id="telemetry-arm"><dt>--</dt><dd>--</dd></dl>
+    <h2>Mast</h2>
+    <dl class="telemetry" id="telemetry-mast"><dt>--</dt><dd>--</dd></dl>
+    <h2>Microscope</h2>
+    <dl class="telemetry" id="telemetry-microscope"><dt>--</dt><dd>--</dd></dl>
+    <h2>Antenna</h2>
+    <dl class="telemetry" id="telemetry-antenna"><dt>--</dt><dd>--</dd></dl>
+    <h2>Power</h2>
+    <dl class="telemetry" id="telemetry-power"><dt>--</dt><dd>--</dd></dl>
+  </aside>
+
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

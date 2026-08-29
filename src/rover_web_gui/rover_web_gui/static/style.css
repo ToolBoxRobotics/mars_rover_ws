@@ -1,0 +1,383 @@
+/* ---------------------------------------------------------------------
+   Design language: an analog mission-control console, not a SaaS admin
+   dashboard. Warm-black phosphor background, amber telemetry accent
+   (caution-panel amber, not a generic dark-mode green), Mars-rust
+   reserved strictly for fault/disconnect states, cyan reserved
+   strictly for "live/nominal". Data is always monospace; the mode
+   switch reads as a physical rocker selector, not a browser tab strip.
+   ------------------------------------------------------------------ */
+
+:root {
+  --bg-void: #14140f;
+  --bg-panel: #1b1a14;
+  --bg-panel-raised: #23211a;
+  --bg-inset: #100f0b;
+  --ink: #e8e3d3;
+  --ink-dim: #a39d88;
+  --ink-faint: #6b6656;
+  --amber: #e8a33d;
+  --amber-dim: #8a6526;
+  --rust: #c1512f;
+  --cyan-live: #5fc9c9;
+  --line: #3a3830;
+  --line-bright: #514c3c;
+
+  --font-display: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+  --radius: 3px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-void);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--amber-dim); color: var(--ink); }
+
+button {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+button:focus-visible, a:focus-visible, input:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+
+.mono { font-family: var(--font-mono); }
+
+/* ------------------------------------------------------------- layout --- */
+.console {
+  display: grid;
+  grid-template-columns: 220px 1fr 260px;
+  grid-template-rows: 56px 1fr;
+  grid-template-areas:
+    "topbar topbar topbar"
+    "rail-left main rail-right";
+  height: 100vh;
+  gap: 1px;
+  background: var(--line);
+}
+
+@media (max-width: 900px) {
+  .console {
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px auto auto auto;
+    grid-template-areas:
+      "topbar"
+      "main"
+      "rail-left"
+      "rail-right";
+    height: auto;
+    min-height: 100vh;
+  }
+}
+
+.topbar {
+  grid-area: topbar;
+  background: var(--bg-panel);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+}
+.wordmark span { color: var(--ink-faint); font-weight: 400; }
+
+.clock {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--ink-dim);
+  font-size: 0.85rem;
+}
+
+.link-status {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--rust);
+}
+.link-status.live { color: var(--cyan-live); }
+
+.rail {
+  background: var(--bg-panel);
+  padding: 16px 14px;
+  overflow-y: auto;
+}
+.rail-left { grid-area: rail-left; }
+.rail-right { grid-area: rail-right; }
+
+.main-panel {
+  grid-area: main;
+  background: var(--bg-void);
+  padding: 18px 22px 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* --------------------------------------------------------- lamp rows --- */
+.lamp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
+.lamp-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  background: var(--bg-panel-raised);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}
+.lamp {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--rust);
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+  flex-shrink: 0;
+}
+.lamp.fault {
+  background: var(--rust);
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+}
+.lamp.ok {
+  background: var(--cyan-live);
+  box-shadow: 0 0 6px 1px rgba(95, 201, 201, 0.55);
+}
+.lamp.warn {
+  background: var(--amber);
+  box-shadow: 0 0 6px 1px rgba(232, 163, 61, 0.55);
+}
+.lamp-label { font-size: 0.78rem; color: var(--ink); flex: 1; }
+.lamp-meta { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-faint); }
+
+/* ------------------------------------------------------- mode switch --- */
+.mode-switch {
+  position: relative;
+  display: inline-flex;
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+  gap: 2px;
+  align-self: flex-start;
+}
+.mode-switch button {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  letter-spacing: 0.09em;
+  padding: 9px 18px;
+  border-radius: 4px;
+  color: var(--ink-dim);
+  transition: color 160ms ease;
+}
+.mode-switch button.active { color: var(--bg-void); font-weight: 600; }
+.mode-switch-highlight {
+  position: absolute;
+  top: 4px; left: 4px;
+  height: calc(100% - 8px);
+  background: var(--amber);
+  border-radius: 4px;
+  transition: left 180ms cubic-bezier(0.34, 1.4, 0.64, 1), width 180ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  box-shadow: 0 0 10px rgba(232, 163, 61, 0.35);
+}
+
+/* -------------------------------------------------------- mode panels --- */
+.mode-panel { display: flex; flex-direction: column; gap: 16px; }
+.mode-panel[hidden] { display: none; }
+
+.panel-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+
+.video-frame {
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-width: 720px;
+}
+.video-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.video-frame .video-label {
+  position: absolute; top: 8px; left: 10px;
+  font-family: var(--font-mono); font-size: 0.68rem;
+  color: var(--amber); letter-spacing: 0.08em;
+  background: rgba(20,20,15,0.6); padding: 2px 6px; border-radius: 2px;
+}
+
+.controls-row { display: flex; gap: 16px; flex-wrap: wrap; }
+
+.slider-block { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
+.slider-block label {
+  font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-dim);
+  display: flex; justify-content: space-between;
+}
+.slider-block output { color: var(--amber); }
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: var(--line-bright);
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--amber);
+  cursor: pointer;
+  border: 2px solid var(--bg-void);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--amber);
+  cursor: pointer;
+  border: 2px solid var(--bg-void);
+}
+
+.btn {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 9px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-bright);
+  background: var(--bg-panel-raised);
+  color: var(--ink);
+}
+.btn:hover { border-color: var(--amber-dim); }
+.btn.primary { background: var(--amber); color: var(--bg-void); border-color: var(--amber); font-weight: 600; }
+.btn.danger { border-color: var(--rust); color: var(--rust); }
+.btn.estop {
+  background: var(--rust);
+  color: var(--bg-void);
+  border-color: var(--rust);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.btn.estop:hover { border-color: var(--ink); }
+.btn.toggled { background: var(--cyan-live); color: var(--bg-void); border-color: var(--cyan-live); }
+.geometry-btn.active { background: var(--amber); color: var(--bg-void); border-color: var(--amber); font-weight: 600; }
+.geometry-btn.active[data-geometry="2"] { background: var(--rust); border-color: var(--rust); color: var(--ink); }
+
+.joystick-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+.joystick-base {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: var(--bg-inset);
+  border: 1px solid var(--line-bright);
+  touch-action: none;
+  cursor: grab;
+}
+.joystick-base::before {
+  /* crosshair, purely decorative - helps gauge deflection at a glance */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 100% 50%, 50% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.5;
+}
+.joystick-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 12px rgba(232, 163, 61, 0.45);
+  transition: transform 80ms ease-out;
+}
+.joystick-base.dragging { cursor: grabbing; }
+.joystick-base.dragging .joystick-handle { transition: none; }
+.joystick-base.disabled { opacity: 0.35; pointer-events: none; }
+
+.deadman-hint {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+}
+
+/* --------------------------------------------------------- telemetry --- */
+.telemetry {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  margin: 0 0 20px;
+}
+.telemetry dt { color: var(--ink-faint); }
+.telemetry dd { margin: 0; color: var(--ink); text-align: right; }
+.telemetry dd.estop-active { color: var(--rust); font-weight: 700; }
+
+.status-pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--line-bright);
+  color: var(--ink-dim);
+}
+.status-pill.ok { color: var(--cyan-live); border-color: var(--cyan-live); }
+.status-pill.warn { color: var(--amber); border-color: var(--amber); }
+.status-pill.fault { color: var(--rust); border-color: var(--rust); }
+
+a.tab-link {
+  color: var(--amber);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--amber-dim);
+}
+a.tab-link:hover { border-bottom-style: solid; }
