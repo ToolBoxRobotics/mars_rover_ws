@@ -1,0 +1,37 @@
+# Antenna gimbal Uno #5: 2-axis (azimuth G1 / elevation G2) high-gain-
+# antenna pointing mechanism, modeled on the real Mars Exploration
+# Rover (Spirit/Opportunity) HGA gimbal - see README's "Explicit
+# assumptions" for the research behind these numbers and what's
+# simplified out (no launch-lock/deploy mechanism modeled, only the
+# operational post-deployment range).
+#
+# Shared with any node that needs them - currently just rover_web_gui,
+# for its azimuth/elevation slider ranges (exposed via GET
+# /api/config, same pattern mast_topology.yaml's max_head_yaw_deg/
+# max_head_pitch_deg already established). NOT used by
+# rover_antenna_bridge itself, which just forwards whatever azimuth/
+# elevation it's sent without reasoning about limits - those are
+# enforced firmware-side in antenna_uno5.ino, same division of
+# responsibility as the mast.
+/**:
+  ros__parameters:
+    # Operational (post-deployment) range - real values from the
+    # actual MER HGA gimbal's published spec, not placeholders:
+    # azimuth's 270 deg span is close to the real HGAG's documented
+    # 280 deg, and elevation's 180 deg is a deliberate software
+    # restriction of what's mechanically possible (real HGAG elevation
+    # is 234 deg) - matching this project's own explicit "software-
+    # limited" framing for elevation specifically.
+    min_azimuth_deg: 15.0
+    max_azimuth_deg: 285.0
+    min_elevation_deg: 0.0
+    max_elevation_deg: 180.0
+
+rover_antenna_bridge:
+  ros__parameters:
+    serial_port: "/dev/rover/antenna"
+    serial_baud: 115200
+    boot_grace_sec: 2.0            # Arduino resets on connect; ignore I/O until it reboots
+    control_rate_hz: 10.0
+    command_timeout_sec: 1.0
+    home_on_startup: true
