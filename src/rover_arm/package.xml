@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>rover_arm</name>
+  <version>0.1.0</version>
+  <description>Arm Mega #2 bridge: 5-axis NEMA17/A4988 joint-space control with calibration-switch homing, plus a MoveIt2 trajectory execution bridge.</description>
+  <maintainer email="rover@toolboxrobotics.local">Toolbox Robotics</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>rover_msgs</depend>
+  <depend>rover_protocol</depend>
+  <depend>python3-serial</depend>
+  <depend>control_msgs</depend>
+  <depend>trajectory_msgs</depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

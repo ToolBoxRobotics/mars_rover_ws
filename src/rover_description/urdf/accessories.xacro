@@ -1,0 +1,143 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Solar panels and high-gain antenna - genuinely new additions to
+       the active model, adapted from a user-supplied reference
+       template (see rover_description/reference/opportunity_style_template.urdf.xacro
+       for the full corrected original, mesh-based version).
+
+       Primitive geometry here, not meshes: this project's whole model
+       has always used simple box/cylinder primitives (chassis.xacro,
+       arm.xacro, mast.xacro) rather than mesh files, and no .stl files
+       were supplied with the reference template - referencing meshes
+       that don't exist on disk would make these render as nothing at
+       all in RViz until someone adds them. Swapping to real meshes
+       later is a small, local change (replace the <geometry> block
+       contents) whenever actual mesh files are available.
+
+       Neither of these has real actuation hardware/firmware in this
+       project (no Arduino board drives an antenna anywhere in
+       rover_arm/rover_mast/rover_base) - the antenna's two joints are
+       therefore "fixed" rather than "revolute" for now, so the model
+       doesn't imply a control capability that doesn't exist. If real
+       antenna hardware gets added later, these would become revolute
+       and probably want their own small bridge node, the same pattern
+       rover_mast already follows for its own pan/tilt. -->
+
+  <xacro:property name="panel_length" value="0.20"/>
+  <xacro:property name="panel_width" value="0.13"/>
+  <xacro:property name="panel_thickness" value="0.006"/>
+  <xacro:property name="panel_mass" value="0.25"/>
+
+  <xacro:macro name="solar_panel" params="name x y">
+    <joint name="${name}_panel_joint" type="fixed">
+      <parent link="chassis_link"/>
+      <child link="${name}_panel_link"/>
+      <origin xyz="${x} ${y} ${chassis_height/2.0 + panel_thickness/2.0}" rpy="0 0 0"/>
+    </joint>
+    <link name="${name}_panel_link">
+      <visual>
+        <geometry><box size="${panel_length} ${panel_width} ${panel_thickness}"/></geometry>
+        <material name="solar_panel_blue"/>
+      </visual>
+      <collision>
+        <geometry><box size="${panel_length} ${panel_width} ${panel_thickness}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="${panel_mass}"/>
+        <xacro:box_inertia mass="${panel_mass}" x="${panel_length}" y="${panel_width}" z="${panel_thickness}"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <!-- 4 symmetric panels (front/rear x left/right) plus 1 smaller
+       rear-center panel, all clear of the arm mount (x=wheelbase_front+0.05)
+       and mast mount (x=-wheelbase_rear-0.02). -->
+  <xacro:solar_panel name="front_left" x="0.14" y="0.10"/>
+  <xacro:solar_panel name="front_right" x="0.14" y="-0.10"/>
+  <xacro:solar_panel name="rear_left" x="-0.06" y="0.10"/>
+  <xacro:solar_panel name="rear_right" x="-0.06" y="-0.10"/>
+
+  <joint name="rear_middle_panel_joint" type="fixed">
+    <parent link="chassis_link"/>
+    <child link="rear_middle_panel_link"/>
+    <origin xyz="-0.20 0 ${chassis_height/2.0 + panel_thickness/2.0}" rpy="0 0 0"/>
+  </joint>
+  <link name="rear_middle_panel_link">
+    <visual>
+      <geometry><box size="0.14 0.12 ${panel_thickness}"/></geometry>
+      <material name="solar_panel_blue"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.14 0.12 ${panel_thickness}"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.15"/>
+      <xacro:box_inertia mass="0.15" x="0.14" y="0.12" z="${panel_thickness}"/>
+    </inertial>
+  </link>
+
+  <!-- High-gain antenna: base -> short mast -> dish. Mounted rear,
+       offset to one side to clear the mast's own mount point. -->
+  <xacro:property name="antenna_mast_length" value="0.15"/>
+
+  <joint name="antenna_base_joint" type="fixed">
+    <parent link="chassis_link"/>
+    <child link="antenna_base_link"/>
+    <origin xyz="-0.20 0.15 ${chassis_height/2.0}" rpy="0 0 0"/>
+  </joint>
+  <link name="antenna_base_link">
+    <visual>
+      <geometry><cylinder radius="0.018" length="0.02"/></geometry>
+      <material name="mast_silver"/>
+    </visual>
+    <inertial>
+      <mass value="0.05"/>
+      <xacro:cylinder_inertia mass="0.05" radius="0.018" length="0.02"/>
+    </inertial>
+  </link>
+
+  <!-- Fixed for now (see header note) - would become revolute (axis
+       "0 0 1") if real pan actuation hardware is ever added. -->
+  <joint name="antenna_pan_joint" type="fixed">
+    <parent link="antenna_base_link"/>
+    <child link="antenna_mast_link"/>
+    <origin xyz="0 0 0.01" rpy="0 0 0"/>
+  </joint>
+  <link name="antenna_mast_link">
+    <visual>
+      <origin xyz="0 0 ${antenna_mast_length/2.0}" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.006" length="${antenna_mast_length}"/></geometry>
+      <material name="mast_silver"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 ${antenna_mast_length/2.0}" rpy="0 0 0"/>
+      <mass value="0.08"/>
+      <xacro:cylinder_inertia mass="0.08" radius="0.006" length="${antenna_mast_length}"/>
+    </inertial>
+  </link>
+
+  <!-- Fixed for now (see header note) - would become revolute (axis
+       "0 1 0") if real tilt actuation hardware is ever added. -->
+  <joint name="antenna_tilt_joint" type="fixed">
+    <parent link="antenna_mast_link"/>
+    <child link="antenna_dish_link"/>
+    <origin xyz="0 0 ${antenna_mast_length}" rpy="0 0 0"/>
+  </joint>
+  <link name="antenna_dish_link">
+    <visual>
+      <origin xyz="0 0 0.003" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.045" length="0.006"/></geometry>
+      <material name="antenna_hg_white"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.003" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.045" length="0.006"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.06"/>
+      <xacro:cylinder_inertia mass="0.06" radius="0.045" length="0.006"/>
+    </inertial>
+  </link>
+
+</robot>

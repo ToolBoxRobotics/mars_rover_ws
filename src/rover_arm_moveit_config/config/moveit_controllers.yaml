@@ -1,0 +1,29 @@
+# Tells MoveIt's trajectory execution manager where to send planned
+# trajectories: rover_arm's own arm_controller/follow_joint_trajectory
+# action server (rover_arm/rover_arm/trajectory_action_server.py) -
+# not ros2_control, since that node already speaks this exact action
+# interface directly against the existing ArmCommand/ArmState
+# protocol. See that node's own module docstring for the full
+# reasoning. Structure verified against MoveIt's official Humble
+# documentation (moveit.picknik.ai/humble/doc/examples/controller_configuration).
+trajectory_execution:
+  allowed_execution_duration_scaling: 2.0
+  allowed_goal_duration_margin: 3.0
+  allowed_start_tolerance: 0.05
+
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_simple_controller_manager:
+  controller_names:
+    - arm_controller
+
+  arm_controller:
+    action_ns: follow_joint_trajectory
+    type: FollowJointTrajectory
+    default: true
+    joints:
+      - shoulder_yaw
+      - shoulder_pitch
+      - elbow_pitch
+      - wrist_pitch
+      - wrist_roll

@@ -1,0 +1,37 @@
+# Geometry and tuning constants for the 6-wheel, 4-corner-steering base
+# (Mega #1). Modeled after Opportunity/Curiosity-style rocker-bogie
+# steering: front and rear corner pairs steer, the two middle wheels
+# are fixed and only drive.
+rover_base_bridge:
+  ros__parameters:
+    serial_port: "/dev/rover/base"        # stable udev symlink, see README
+    serial_baud: 115200
+    boot_grace_sec: 2.0            # Arduino resets on connect; ignore I/O until it reboots
+    control_rate_hz: 20.0
+
+    # Geometry (meters), vehicle frame: +x forward, +y left
+    wheelbase_front_m: 0.30      # front axle distance from rover center
+    wheelbase_rear_m: 0.30       # rear axle distance from rover center
+    track_m: 0.46                # left-right distance between wheel centers
+    wheel_radius_m: 0.075
+
+    # Hardware limits
+    max_wheel_rpm: 83.0           # DFRobot 12V/83RPM gear motor
+    max_steer_deg: 60.0            # mechanical travel limit of the 40kg steering servos
+    encoder_ticks_per_rev: 663     # DFRobot quadrature encoder, verify against datasheet
+
+    # cmd_vel -> throttle scaling
+    max_linear_mps: 0.65           # ~ wheel surface speed at max_wheel_rpm
+    max_angular_radps: 1.5
+
+rover_odometry_node:
+  ros__parameters:
+    # Must match rover_base's wheel_radius_m/track_m/encoder_ticks_per_rev
+    # above - duplicated here rather than cross-referenced since ROS 2
+    # params files can't reference values from another block.
+    wheel_radius_m: 0.075
+    track_m: 0.46
+    encoder_ticks_per_rev: 663
+    odom_frame: "odom"
+    base_frame: "base_link"
+    publish_tf: true

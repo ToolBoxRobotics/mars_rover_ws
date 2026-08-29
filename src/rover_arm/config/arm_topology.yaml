@@ -1,0 +1,48 @@
+# 5-axis arm Mega #2: NEMA17 + EBA-17-M planetary gearbox (120:1) per
+# joint, one calibration (limit) switch per joint for homing. Mixed
+# stepper drivers: J1 (shoulder_yaw), J2 (shoulder_pitch), J3
+# (elbow_pitch) use TB6600; J4 (wrist_pitch), J5 (wrist_roll) still
+# use A4988 - see arm_mega2.ino's header comment for the enable-pin
+# wiring consequences of that split.
+
+# Shared with any node that needs them (currently: rover_arm's
+# trajectory_action_server, for converting MoveIt's planned radians
+# into motor steps - see rover_arm/rover_arm/joint_conversion.py).
+# NOT used by rover_arm_bridge itself, which only ever passes
+# joint_target_steps through positionally and has no need to know
+# joint names or gearing - kept out of that node's own block below so
+# it isn't misread as bridge-specific config.
+/**:
+  ros__parameters:
+    joint_names: ["shoulder_yaw", "shoulder_pitch", "elbow_pitch", "wrist_pitch", "wrist_roll"]
+    # Steps-per-revolution at the joint (motor full steps * microstep
+    # factor * gear reduction): 200 full steps * 1/16 microstepping *
+    # 120:1 EBA-17-M planetary gearbox = 384000. (Note: the publicly
+    # documented EBA-17/EBA-17-S ratio is 38.4:1 - 120:1 is what was
+    # specified for the "M" variant actually used here; worth
+    # double-checking against the datasheet/nameplate if these numbers
+    # ever look off on the bench.)
+    #
+    # All five entries are still identical below, but that's no longer
+    # guaranteed to stay true now that J1-J3 use TB6600 and J4/J5 use
+    # A4988: TB6600 sets microstepping via DIP switches on the driver
+    # itself (same idea as A4988's MS1/MS2/MS3 pins, just physical
+    # rather than pin-controlled), and there's no guarantee both
+    # driver types end up configured for the same microstep factor.
+    # If they don't, this needs to become five genuinely different
+    # values, not five copies of one - joint_conversion.py and
+    # trajectory_action_server.py already handle per-joint values
+    # correctly (they always have - this was never assumed uniform in
+    # the code, only in this file's data so far), so this is purely a
+    # "measure the real hardware and update these five numbers" task,
+    # not a code change.
+    steps_per_joint_rev: [384000, 384000, 384000, 384000, 384000]
+
+rover_arm_bridge:
+  ros__parameters:
+    serial_port: "/dev/rover/arm"
+    serial_baud: 115200
+    boot_grace_sec: 2.0            # Arduino resets on connect; ignore I/O until it reboots
+    control_rate_hz: 20.0
+    command_timeout_sec: 0.5
+    home_on_startup: true

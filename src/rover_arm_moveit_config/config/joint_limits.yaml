@@ -1,0 +1,49 @@
+# Joint limits for MoveIt's trajectory time parameterization.
+#
+# max_velocity here matches rover_description/urdf/arm.xacro's own
+# <limit velocity="..."/> values exactly - not restated independently,
+# just made visible to MoveIt, which reads velocity/position limits
+# from the URDF automatically but needs acceleration limits declared
+# separately here since URDF has no field for them.
+#
+# Recomputed for the EBA-17-M planetary gearbox (120:1) - NEMA17 +
+# A4988 per joint (see rover_arm/config/arm_topology.yaml). The
+# firmware's own AccelStepper profile is the real, binding constraint
+# (arm_mega2.ino: kMaxSpeedStepsPerSec=2000, kAccelStepsPerSec2=4000
+# steps/s^2 - motor-shaft limits, independent of gear ratio); these
+# values are that same motor-shaft profile converted through the new
+# 384000 steps/rev (200 full steps * 1/16 microstepping * 120:1) to
+# real joint-space rad/s and rad/s^2, not independently chosen. All
+# five joints get the identical value now, correctly - the previous
+# per-joint spread (1.5/1.8/2.0/2.5) was never grounded in anything
+# joint-specific to begin with, and every joint shares the same
+# motor+gearbox+firmware speed cap, so they should read the same.
+# Notably slower than the old 5:1-gearing placeholder implied
+# (~0.79 rad/s then vs ~0.033 rad/s now) - the real tradeoff of a
+# much higher reduction ratio: more torque and precision, less speed.
+joint_limits:
+  shoulder_yaw:
+    has_velocity_limits: true
+    max_velocity: 0.033
+    has_acceleration_limits: true
+    max_acceleration: 0.065
+  shoulder_pitch:
+    has_velocity_limits: true
+    max_velocity: 0.033
+    has_acceleration_limits: true
+    max_acceleration: 0.065
+  elbow_pitch:
+    has_velocity_limits: true
+    max_velocity: 0.033
+    has_acceleration_limits: true
+    max_acceleration: 0.065
+  wrist_pitch:
+    has_velocity_limits: true
+    max_velocity: 0.033
+    has_acceleration_limits: true
+    max_acceleration: 0.065
+  wrist_roll:
+    has_velocity_limits: true
+    max_velocity: 0.033
+    has_acceleration_limits: true
+    max_acceleration: 0.065

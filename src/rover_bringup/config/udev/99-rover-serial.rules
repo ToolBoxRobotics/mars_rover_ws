@@ -1,0 +1,102 @@
+# Stable /dev/rover/* symlinks for every serial device on the rover.
+#
+# USB device enumeration order (ttyACM0, ttyACM1, ttyUSB0, ...) is NOT
+# stable across reboots/replugs, which is exactly the kind of thing
+# that turns a bench-tested launch file into a 2am debugging session.
+# This file pins each physical board/sensor to a fixed symlink by its
+# USB vendor/product ID (and, where two devices share a VID:PID such
+# as two identical Arduino Megas, by serial number as well).
+#
+# INSTALL:
+#   sudo cp 99-rover-serial.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# FIND YOUR OWN VALUES (run once per device, with only that device
+# plugged in, then fill in the ATTRS{...} below):
+#   udevadm info -a -n /dev/ttyACM0 | grep -E 'idVendor|idProduct|serial'
+#
+# The values below are PLACEHOLDERS - genuine Arduino Uno/Mega clones
+# commonly show up as one of a handful of well-known VID:PID pairs
+# (e.g. 2341:0042 for a genuine Mega 2560, 1a86:7523 for a CH340-based
+# clone), but yours must be confirmed on the bench before relying on
+# this file; do not assume these are correct for your specific boards.
+#
+# IMPORTANT for the two Mega 2560 boards specifically (base, arm):
+# many Mega 2560 units (genuine and clone alike) report an EMPTY or
+# IDENTICAL ATTRS{serial} across boards, because the ATmega16u2
+# USB-serial bridge only has a real per-unit serial number if it was
+# explicitly DFU-flashed with one. If `udevadm info -a -n
+# /dev/ttyACM0 | grep serial` comes back empty or the same for both
+# boards, match on physical USB port topology instead - replace the
+# ATTRS{serial}=="..." clause below with something like
+# KERNELS=="1-4.2" (find your own board's physical path via
+# `udevadm info -a -n /dev/ttyACM0 | grep KERNELS`, using the
+# shortest one, which is the physical port path). Physical-port
+# matching is less portable (breaks if you move which USB hub port a
+# board is plugged into) but is often the only option available
+# without re-flashing each 16u2's serial number.
+#
+# The same underlying concern applies to the FOUR Uno boards (mast,
+# microscope, antenna, power) sharing 2341:0043 - genuine Unos also
+# bridge USB-serial through an ATmega16u2/8u2 with the identical "no
+# real serial unless DFU-flashed" behavior. FIXED: an earlier version
+# of this file's own mast entry claimed the mast "isn't subject to
+# this same collision risk" - that was wrong even before the power
+# board's own Nano-to-Uno swap added a fourth Uno to the mix; the
+# mast has shared this exact VID:PID with microscope and antenna
+# since the session it first became an Uno. Same fix if it comes up
+# for any of these four: match on KERNELS instead of ATTRS{serial}
+# for whichever one turns out to need it.
+
+# Base Mega #1 (drive + 4-corner steering + encoders)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0042", ATTRS{serial}=="REPLACE_WITH_BASE_MEGA_SERIAL", SYMLINK+="rover/base"
+
+# Arm Mega #2 (5-axis joint control)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0042", ATTRS{serial}=="REPLACE_WITH_ARM_MEGA_SERIAL", SYMLINK+="rover/arm"
+
+# Mast Uno #3 (pan/tilt head + erect/stow lift)
+# FIXED: this rule previously matched idProduct 0042 (the Mega's own
+# ID) with a placeholder literally named MAST_MEGA_SERIAL - a real,
+# long-standing bug, not a stylistic leftover. The mast became an Uno
+# (idProduct 0043) many sessions before this was caught; as written,
+# this rule could only ever have matched base's or arm's own Mega,
+# never the mast's actual hardware. Found while updating this file
+# for an unrelated reason (the power board's own Nano-to-Uno swap).
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", ATTRS{serial}=="REPLACE_WITH_MAST_UNO_SERIAL", SYMLINK+="rover/mast"
+
+# Microscope Uno #4 (focus/zoom, LED, lens cover)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", ATTRS{serial}=="REPLACE_WITH_MICROSCOPE_UNO_SERIAL", SYMLINK+="rover/microscope"
+
+# Antenna gimbal Uno #5 (azimuth/elevation HGA pointing)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", ATTRS{serial}=="REPLACE_WITH_ANTENNA_UNO_SERIAL", SYMLINK+="rover/antenna"
+
+# Power/environmental monitoring Uno #6 (battery voltages, input
+# current, onboard computer temperature, its cooling fan). UPDATED:
+# this board was originally an Arduino Nano, swapped for an Uno after
+# repeated hardware trouble with the Nano units in hand - see
+# README's "Explicit assumptions" for the history. That swap also
+# retires the CH340-clone-vs-GPS-adapter VID:PID collision risk this
+# entry used to carry (a genuine concern at the time, specific to the
+# Nano's own USB-serial chip situation, not the Uno's) - this board
+# now shares the same collision situation the other three Unos below
+# already have (see this file's own header note on that), a fourth
+# instance of the same known, already-documented risk rather than a
+# new one.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", ATTRS{serial}=="REPLACE_WITH_POWER_UNO_SERIAL", SYMLINK+="rover/power"
+
+# BNO086 IMU on a Waveshare Industrial USB-TTL converter (no Arduino;
+# runs UART-RVC mode straight to the host). CH343-based converters
+# commonly enumerate as 1a86:55d3; confirm on your own bench.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55d3", ATTRS{serial}=="REPLACE_WITH_IMU_ADAPTER_SERIAL", SYMLINK+="rover/imu"
+
+# Waveshare L76X GPS (also direct-to-USB, no Arduino)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", ATTRS{serial}=="REPLACE_WITH_GPS_ADAPTER_SERIAL", SYMLINK+="rover/gps"
+
+# RPLIDAR C1 (Slamtec's CP2102-based boards commonly enumerate as
+# 10c4:ea60 - confirm on your own bench)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="REPLACE_WITH_LIDAR_SERIAL", SYMLINK+="rover/lidar"
+
+# Main perception USB camera and the microscope's USB camera - video
+# devices need a different subsystem match than the tty rules above.
+SUBSYSTEM=="video4linux", ATTRS{idVendor}=="REPLACE", ATTRS{idProduct}=="REPLACE", ATTRS{serial}=="REPLACE_WITH_MAIN_CAM_SERIAL", SYMLINK+="rover/main_cam"
+SUBSYSTEM=="video4linux", ATTRS{idVendor}=="REPLACE", ATTRS{idProduct}=="REPLACE", ATTRS{serial}=="REPLACE_WITH_MICROSCOPE_CAM_SERIAL", SYMLINK+="rover/microscope_cam"

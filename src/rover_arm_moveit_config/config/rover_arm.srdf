@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot name="rover_arm">
+  <!-- 5-axis arm planning group - shoulder_yaw through wrist_roll.
+       Deliberately stops at j5_link, not the microscope module beyond
+       it: microscope_focus_joint is a separate mechanism (Uno #4,
+       its own stepper, its own control path) rather than part of arm
+       positioning - see rover_description/urdf/arm.xacro's own
+       comment on that joint. Including it in this chain would pull
+       it into MoveIt's planning group whether or not that's wanted,
+       since <chain> implicitly includes every joint between base_link
+       and tip_link. -->
+  <group name="arm">
+    <chain base_link="arm_base_link" tip_link="j5_link"/>
+  </group>
+
+  <!-- All-zero matches the position every joint seeks in
+       arm_mega2.ino's homing sequence - usable from RViz's "Select
+       Goal State" dropdown or a MoveGroupInterface::setNamedTarget("home"). -->
+  <group_state name="home" group="arm">
+    <joint name="shoulder_yaw" value="0"/>
+    <joint name="shoulder_pitch" value="0"/>
+    <joint name="elbow_pitch" value="0"/>
+    <joint name="wrist_pitch" value="0"/>
+    <joint name="wrist_roll" value="0"/>
+  </group_state>
+
+  <!-- No gripper on this arm - this just marks j5_link as the
+       reachable tip for RViz's interactive markers. -->
+  <end_effector name="microscope_ee" parent_link="j5_link" group="arm"/>
+
+  <!-- No virtual_joint declared: this rover has no published "world"
+       TF frame, and the arm group's own chain (arm_base_link to
+       j5_link) is self-contained for joint-space planning without
+       one. Add one referencing an actual published frame (e.g.
+       base_link) if this ever needs to plan relative to the wider
+       rover / a shared planning scene rather than the arm alone. -->
+
+  <!-- Adjacent-link pairs, disabled because they're physically
+       touching at every configuration (connected by a joint). This is
+       a manually curated list covering the arm's own chain plus its
+       mount point - not an exhaustively computed default collision
+       matrix for the whole rover the way MoveIt Setup Assistant's
+       matrix generator would produce. Re-run that tool for a complete
+       pass if whole-rover collision checking beyond the arm matters. -->
+  <disable_collisions link1="chassis_link" link2="arm_base_link" reason="Adjacent"/>
+  <disable_collisions link1="arm_base_link" link2="j1_link" reason="Adjacent"/>
+  <disable_collisions link1="j1_link" link2="j2_link" reason="Adjacent"/>
+  <disable_collisions link1="j2_link" link2="j3_link" reason="Adjacent"/>
+  <disable_collisions link1="j3_link" link2="j4_link" reason="Adjacent"/>
+  <disable_collisions link1="j4_link" link2="j5_link" reason="Adjacent"/>
+  <disable_collisions link1="j5_link" link2="microscope_link" reason="Adjacent"/>
+</robot>

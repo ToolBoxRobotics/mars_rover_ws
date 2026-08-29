@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- BNO086 IMU (UART-RVC, wired straight to a USB-TTL converter) -
+       mounted low and central so its readings are close to the
+       vehicle's actual center of rotation. -->
+  <link name="imu_link">
+    <visual><geometry><box size="0.02 0.02 0.006"/></geometry><material name="sensor_dark"/></visual>
+    <inertial><mass value="0.01"/><xacro:box_inertia mass="0.01" x="0.02" y="0.02" z="0.006"/></inertial>
+  </link>
+  <joint name="chassis_to_imu" type="fixed">
+    <parent link="chassis_link"/>
+    <child link="imu_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- L76X GPS (wired straight to USB) - mounted high/rear with the
+       clearest sky view available, away from the mast's own mass. -->
+  <link name="gps_link">
+    <visual><geometry><cylinder radius="0.02" length="0.01"/></geometry><material name="sensor_dark"/></visual>
+    <inertial><mass value="0.02"/><xacro:cylinder_inertia mass="0.02" radius="0.02" length="0.01"/></inertial>
+  </link>
+  <joint name="chassis_to_gps" type="fixed">
+    <parent link="chassis_link"/>
+    <child link="gps_link"/>
+    <origin xyz="${-wheelbase_rear/2.0} 0 ${chassis_height/2.0 + 0.02}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- RPLIDAR C1 (Waveshare/Slamtec) - front-mounted, unobstructed
+       360-degree scan plane, used for autonomous navigation. -->
+  <link name="lidar_link">
+    <visual><geometry><cylinder radius="0.038" length="0.04"/></geometry><material name="sensor_dark"/></visual>
+    <collision><geometry><cylinder radius="0.038" length="0.04"/></geometry></collision>
+    <inertial><mass value="0.19"/><xacro:cylinder_inertia mass="0.19" radius="0.038" length="0.04"/></inertial>
+  </link>
+  <joint name="chassis_to_lidar" type="fixed">
+    <parent link="chassis_link"/>
+    <child link="lidar_link"/>
+    <origin xyz="${wheelbase_front + 0.06} 0 ${chassis_height/2.0 + 0.03}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Main perception USB camera (OpenCV) - simple, single fixed
+       forward-facing webcam per the current spec. This deliberately
+       supersedes the previous Orbbec Astra depth-camera choice from
+       an earlier iteration of this workspace; swap this block for a
+       depth/stereo camera macro later if 3D perception turns out to
+       be needed again. -->
+  <link name="main_camera_link">
+    <visual><geometry><box size="0.03 0.09 0.03"/></geometry><material name="sensor_dark"/></visual>
+    <collision><geometry><box size="0.03 0.09 0.03"/></geometry></collision>
+    <inertial><mass value="0.08"/><xacro:box_inertia mass="0.08" x="0.03" y="0.09" z="0.03"/></inertial>
+  </link>
+  <joint name="chassis_to_main_camera" type="fixed">
+    <parent link="chassis_link"/>
+    <child link="main_camera_link"/>
+    <origin xyz="${wheelbase_front + 0.02} 0 ${chassis_height/2.0 + 0.06}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="main_camera_optical_frame"/>
+  <joint name="main_camera_optical_joint" type="fixed">
+    <parent link="main_camera_link"/>
+    <child link="main_camera_optical_frame"/>
+    <origin xyz="0 0 0" rpy="${-3.14159265/2.0} 0 ${-3.14159265/2.0}"/>
+  </joint>
+
+</robot>

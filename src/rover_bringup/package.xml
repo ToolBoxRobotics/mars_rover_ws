@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>rover_bringup</name>
+  <version>0.1.0</version>
+  <description>Top-level launch files and configuration tying every rover subsystem together.</description>
+  <maintainer email="rover@toolboxrobotics.local">Toolbox Robotics</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>rover_description</exec_depend>
+  <exec_depend>rover_base</exec_depend>
+  <exec_depend>rover_arm</exec_depend>
+  <exec_depend>rover_mast</exec_depend>
+  <exec_depend>rover_antenna</exec_depend>
+  <exec_depend>rover_power</exec_depend>
+  <exec_depend>rover_microscope</exec_depend>
+  <exec_depend>rover_sensors</exec_depend>
+  <exec_depend>rover_teleop</exec_depend>
+  <exec_depend>rover_web_gui</exec_depend>
+  <exec_depend>rover_navigation</exec_depend>
+  <exec_depend>rover_arm_moveit_config</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>xacro</exec_depend>
+
+  <!-- RPLIDAR C1 driver: install one of these separately (not vendored
+       in this workspace) - see README for both options. -->
+  <exec_depend>rplidar_ros</exec_depend>
+
+  <!-- slam_toolbox / navigation2 / nav2_bringup are declared in
+       rover_navigation's own package.xml, not duplicated here.
+       bringup.launch.py only needs rover_navigation itself to always
+       be present (a lightweight config/launch-only package); those
+       heavier packages are only actually required at runtime if you
+       pass use_slam:=true or use_navigation:=true. -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

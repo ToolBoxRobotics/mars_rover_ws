@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Link length/mass placeholders - tune once the arm is actually
+       machined; joint order/names match rover_arm/config/arm_topology.yaml
+       (shoulder_yaw, shoulder_pitch, elbow_pitch, wrist_pitch, wrist_roll).
+       Each joint: NEMA17 + A4988 driver + EBA-17-M planetary gearbox
+       (120:1) - see arm_topology.yaml's own comment on steps_per_joint_rev
+       for the full step-calibration math, and joint <limit velocity="...">
+       below for the real, much-reduced achievable speed that gearing implies. -->
+  <xacro:property name="link1_len" value="0.10"/>
+  <xacro:property name="link2_len" value="0.22"/>
+  <xacro:property name="link3_len" value="0.20"/>
+  <xacro:property name="link4_len" value="0.09"/>
+  <xacro:property name="link5_len" value="0.07"/>
+  <xacro:property name="arm_link_radius" value="0.03"/>
+  <xacro:property name="arm_link_mass" value="0.6"/>
+
+  <xacro:macro name="arm_segment" params="name length radius:=${arm_link_radius} mass:=${arm_link_mass}">
+    <link name="${name}_link">
+      <visual>
+        <origin xyz="0 0 ${length/2.0}" rpy="0 0 0"/>
+        <geometry><cylinder radius="${radius}" length="${length}"/></geometry>
+        <material name="arm_orange"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 ${length/2.0}" rpy="0 0 0"/>
+        <geometry><cylinder radius="${radius}" length="${length}"/></geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 ${length/2.0}" rpy="0 0 0"/>
+        <mass value="${mass}"/>
+        <xacro:cylinder_inertia mass="${mass}" radius="${radius}" length="${length}"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <joint name="chassis_to_arm_base" type="fixed">
+    <parent link="chassis_link"/>
+    <child link="arm_base_link"/>
+    <origin xyz="${wheelbase_front + 0.05} 0 ${chassis_height/2.0}" rpy="0 0 0"/>
+  </joint>
+  <link name="arm_base_link">
+    <visual><geometry><cylinder radius="0.04" length="0.03"/></geometry><material name="arm_orange"/></visual>
+    <inertial><mass value="0.4"/><xacro:cylinder_inertia mass="0.4" radius="0.04" length="0.03"/></inertial>
+  </link>
+
+  <!-- J1 shoulder_yaw -->
+  <xacro:arm_segment name="j1" length="${link1_len}"/>
+  <joint name="shoulder_yaw" type="revolute">
+    <parent link="arm_base_link"/>
+    <child link="j1_link"/>
+    <origin xyz="0 0 0.015" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${-150.0*3.14159265/180.0}" upper="${150.0*3.14159265/180.0}" effort="8.0" velocity="0.033"/>
+  </joint>
+
+  <!-- J2 shoulder_pitch -->
+  <xacro:arm_segment name="j2" length="${link2_len}"/>
+  <joint name="shoulder_pitch" type="revolute">
+    <parent link="j1_link"/>
+    <child link="j2_link"/>
+    <origin xyz="0 0 ${link1_len}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="${-100.0*3.14159265/180.0}" upper="${100.0*3.14159265/180.0}" effort="12.0" velocity="0.033"/>
+  </joint>
+
+  <!-- J3 elbow_pitch -->
+  <xacro:arm_segment name="j3" length="${link3_len}"/>
+  <joint name="elbow_pitch" type="revolute">
+    <parent link="j2_link"/>
+    <child link="j3_link"/>
+    <origin xyz="0 0 ${link2_len}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="${-150.0*3.14159265/180.0}" upper="${150.0*3.14159265/180.0}" effort="8.0" velocity="0.033"/>
+  </joint>
+
+  <!-- J4 wrist_pitch (1st wrist joint) -->
+  <xacro:arm_segment name="j4" length="${link4_len}" radius="0.022" mass="0.3"/>
+  <joint name="wrist_pitch" type="revolute">
+    <parent link="j3_link"/>
+    <child link="j4_link"/>
+    <origin xyz="0 0 ${link3_len}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="${-100.0*3.14159265/180.0}" upper="${100.0*3.14159265/180.0}" effort="4.0" velocity="0.033"/>
+  </joint>
+
+  <!-- J5 wrist_roll (2nd wrist joint) -->
+  <xacro:arm_segment name="j5" length="${link5_len}" radius="0.02" mass="0.2"/>
+  <joint name="wrist_roll" type="revolute">
+    <parent link="j4_link"/>
+    <child link="j5_link"/>
+    <origin xyz="0 0 ${link4_len}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${-170.0*3.14159265/180.0}" upper="${170.0*3.14159265/180.0}" effort="3.0" velocity="0.033"/>
+  </joint>
+
+  <!-- 3rd wrist / 6th axis: the microscope module itself. Uno #4 drives
+       a small stepper for combined focus/zoom - modeled as a short
+       prismatic joint moving the optical assembly, not a full DOF for
+       aiming (aiming comes entirely from J1-J5). -->
+  <link name="microscope_link">
+    <visual>
+      <geometry><box size="0.05 0.04 0.06"/></geometry>
+      <material name="sensor_dark"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.05 0.04 0.06"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.15"/>
+      <xacro:box_inertia mass="0.15" x="0.05" y="0.04" z="0.06"/>
+    </inertial>
+  </link>
+
+  <joint name="microscope_focus_joint" type="prismatic">
+    <parent link="j5_link"/>
+    <child link="microscope_link"/>
+    <origin xyz="0 0 ${link5_len}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0.0" upper="0.015" effort="0.5" velocity="0.02"/>
+  </joint>
+
+  <link name="microscope_optical_frame"/>
+  <joint name="microscope_optical_joint" type="fixed">
+    <parent link="microscope_link"/>
+    <child link="microscope_optical_frame"/>
+    <origin xyz="0 0 0.03" rpy="${-3.14159265/2.0} 0 ${-3.14159265/2.0}"/>
+  </joint>
+
+</robot>

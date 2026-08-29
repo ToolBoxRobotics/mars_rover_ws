@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Geometry constants mirrored from rover_base/config/base_topology.yaml -
+       keep the two in sync if either changes. -->
+  <xacro:property name="wheelbase_front" value="0.30"/>
+  <xacro:property name="wheelbase_rear" value="0.30"/>
+  <xacro:property name="track" value="0.46"/>
+  <xacro:property name="wheel_radius" value="0.075"/>
+  <xacro:property name="wheel_width" value="0.06"/>
+  <xacro:property name="wheel_mass" value="1.1"/>
+
+  <xacro:property name="chassis_length" value="0.62"/>
+  <xacro:property name="chassis_width" value="0.36"/>
+  <xacro:property name="chassis_height" value="0.16"/>
+  <xacro:property name="chassis_mass" value="14.0"/>
+  <xacro:property name="chassis_ground_clearance" value="0.14"/>
+
+  <link name="base_link"/>
+
+  <joint name="base_to_chassis" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis_link"/>
+    <origin xyz="0 0 ${chassis_ground_clearance}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="chassis_link">
+    <visual>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+      <material name="chassis_grey"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="${chassis_mass}"/>
+      <xacro:box_inertia mass="${chassis_mass}" x="${chassis_length}" y="${chassis_width}" z="${chassis_height}"/>
+    </inertial>
+  </link>
+
+  <!-- One steerable corner: chassis -> steer_link (revolute, +-60 deg,
+       driven by a servo direct on a Mega digital pin) -> wheel_link
+       (continuous, DRI0002-driven drive motor + DFRobot quadrature encoder). -->
+  <xacro:macro name="steer_wheel" params="name x y">
+    <link name="${name}_steer_link">
+      <visual>
+        <geometry><cylinder radius="0.02" length="0.06"/></geometry>
+        <material name="sensor_dark"/>
+      </visual>
+      <inertial>
+        <mass value="0.3"/>
+        <xacro:cylinder_inertia mass="0.3" radius="0.02" length="0.06"/>
+      </inertial>
+    </link>
+
+    <joint name="${name}_steer_joint" type="revolute">
+      <parent link="chassis_link"/>
+      <child link="${name}_steer_link"/>
+      <origin xyz="${x} ${y} ${-chassis_ground_clearance + wheel_radius}" rpy="0 0 0"/>
+      <axis xyz="0 0 1"/>
+      <limit lower="${-60.0 * 3.14159265/180.0}" upper="${60.0 * 3.14159265/180.0}" effort="5.0" velocity="3.0"/>
+    </joint>
+
+    <xacro:wheel_link_and_joint name="${name}" parent="${name}_steer_link" xyz="0 0 0"/>
+  </xacro:macro>
+
+  <!-- A fixed-orientation (non-steering) middle wheel. -->
+  <xacro:macro name="fixed_wheel" params="name x y">
+    <xacro:wheel_link_and_joint name="${name}" parent="chassis_link" xyz="${x} ${y} ${-chassis_ground_clearance + wheel_radius}"/>
+  </xacro:macro>
+
+  <xacro:macro name="wheel_link_and_joint" params="name parent xyz">
+    <link name="${name}_wheel_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="${3.14159265/2.0} 0 0"/>
+        <geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry>
+        <material name="wheel_black"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${3.14159265/2.0} 0 0"/>
+        <geometry><cylinder radius="${wheel_radius}" length="${wheel_width}"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="${wheel_mass}"/>
+        <origin xyz="0 0 0" rpy="${3.14159265/2.0} 0 0"/>
+        <xacro:cylinder_inertia mass="${wheel_mass}" radius="${wheel_radius}" length="${wheel_width}"/>
+      </inertial>
+    </link>
+
+    <joint name="${name}_drive_joint" type="continuous">
+      <parent link="${parent}"/>
+      <child link="${name}_wheel_link"/>
+      <origin xyz="${xyz}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:steer_wheel name="front_left" x="${wheelbase_front}" y="${track/2.0}"/>
+  <xacro:steer_wheel name="front_right" x="${wheelbase_front}" y="${-track/2.0}"/>
+  <xacro:fixed_wheel name="mid_left" x="0.0" y="${track/2.0}"/>
+  <xacro:fixed_wheel name="mid_right" x="0.0" y="${-track/2.0}"/>
+  <xacro:steer_wheel name="rear_left" x="${-wheelbase_rear}" y="${track/2.0}"/>
+  <xacro:steer_wheel name="rear_right" x="${-wheelbase_rear}" y="${-track/2.0}"/>
+
+</robot>

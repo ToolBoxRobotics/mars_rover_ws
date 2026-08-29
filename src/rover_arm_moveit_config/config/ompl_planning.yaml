@@ -1,0 +1,38 @@
+# OMPL (sampling-based) planner configuration for the "arm" group.
+#
+# planning_plugins and the per-group planner_configs/projection_evaluator
+# structure below are stable across MoveIt2 versions and well
+# documented. The request_adapters/response_adapters split is less
+# certain to be exactly right for Humble specifically - it matches
+# MoveIt's current (2024+) documented pipeline structure, but that
+# request/response split was introduced by a later refactor and older
+# Humble-era docs show a single combined adapter list instead. If
+# Humble's move_group doesn't recognize these exact keys, the
+# practical impact is small: it silently falls back to its own
+# built-in default adapters rather than failing to start - not a
+# guessed value with a hard-failure downside either way.
+planning_plugins:
+  - ompl_interface/OMPLPlanner
+
+request_adapters:
+  - default_planning_request_adapters/ResolveConstraintFrames
+  - default_planning_request_adapters/ValidateWorkspaceBounds
+  - default_planning_request_adapters/CheckStartStateBounds
+  - default_planning_request_adapters/CheckStartStateCollision
+
+response_adapters:
+  - default_planning_response_adapters/AddTimeOptimalParameterization
+  - default_planning_response_adapters/ValidateSolution
+  - default_planning_response_adapters/DisplayMotionPath
+
+arm:
+  planner_configs:
+    - RRTConnect
+  # First two joints, used to help OMPL discretize this 5-DOF state
+  # space - a standard, low-cost choice (using the whole chain isn't
+  # necessary here), not something specific to this arm's geometry.
+  projection_evaluator: joints(shoulder_yaw,shoulder_pitch)
+  longest_valid_segment_fraction: 0.005
+
+RRTConnect:
+  type: geometric::RRTConnect

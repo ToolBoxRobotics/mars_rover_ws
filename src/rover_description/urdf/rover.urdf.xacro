@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<robot name="mars_rover" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find rover_description)/urdf/common.xacro"/>
+  <xacro:include filename="$(find rover_description)/urdf/chassis.xacro"/>
+  <xacro:include filename="$(find rover_description)/urdf/arm.xacro"/>
+  <xacro:include filename="$(find rover_description)/urdf/mast.xacro"/>
+  <xacro:include filename="$(find rover_description)/urdf/sensors.xacro"/>
+  <xacro:include filename="$(find rover_description)/urdf/accessories.xacro"/>
+
+</robot>
