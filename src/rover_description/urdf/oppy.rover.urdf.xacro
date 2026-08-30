@@ -1,0 +1,1122 @@
+<robot name="mars_opportunity_rover">
+
+  <material name="chassis_grey">
+    <color rgba="0.55 0.55 0.58 1.0"/>
+  </material>
+  <material name="wheel_black">
+    <color rgba="0.08 0.08 0.08 1.0"/>
+  </material>
+  <material name="arm_orange">
+    <color rgba="0.85 0.35 0.05 1.0"/>
+  </material>
+  <material name="mast_silver">
+    <color rgba="0.75 0.75 0.78 1.0"/>
+  </material>
+  <material name="sensor_dark">
+    <color rgba="0.15 0.15 0.17 1.0"/>
+  </material>
+  <material name="lens_glass">
+    <color rgba="0.1 0.15 0.2 0.6"/>
+  </material>
+  <material name="solar_panel_blue">
+    <color rgba="0.1 0.15 0.35 1.0"/>
+  </material>
+  <material name="antenna_hg_white">
+    <color rgba="0.85 0.85 0.85 1.0"/>
+  </material>
+
+  <!-- ===================== MATERIALS ===================== -->
+  <!-- Original 3 -->
+  <material name="grey"><color rgba="0.6 0.6 0.6 1.0"/></material>
+  <material name="black"><color rgba="0.1 0.1 0.1 1.0"/></material>
+  <material name="blue"><color rgba="0.1 0.1 0.8 1.0"/></material>
+
+  <!-- The 15 below were referenced throughout the original file with
+       no matching declaration anywhere - dangling references in the
+       upload. Declared here, several sharing a color deliberately
+       rather than inventing 15 visually distinct ones. -->
+  <material name="arm_material"><color rgba="0.85 0.35 0.05 1.0"/></material>
+  <material name="head_top_material"><color rgba="0.15 0.15 0.17 1.0"/></material>
+  <material name="group_left_chassis_material"><color rgba="0.6 0.6 0.6 1.0"/></material>
+  <material name="group_left_front_steering_material"><color rgba="0.45 0.45 0.47 1.0"/></material>
+  <material name="group_left_wheel_material"><color rgba="0.1 0.1 0.1 1.0"/></material>
+  <material name="left_bogie_material"><color rgba="0.6 0.6 0.6 1.0"/></material>
+  <material name="group_left_middle_chariot_center_material"><color rgba="0.45 0.45 0.47 1.0"/></material>
+  <material name="group_right_chassis_material"><color rgba="0.6 0.6 0.6 1.0"/></material>
+  <material name="group_right_front_steering_material"><color rgba="0.45 0.45 0.47 1.0"/></material>
+  <material name="group_right_wheel_material"><color rgba="0.1 0.1 0.1 1.0"/></material>
+  <material name="right_bogie_material"><color rgba="0.6 0.6 0.6 1.0"/></material>
+  <material name="group_right_middle_chariot_center_material"><color rgba="0.45 0.45 0.47 1.0"/></material>
+  <material name="solar_panel_material"><color rgba="0.1 0.15 0.35 1.0"/></material>
+  <material name="antenna_base_material"><color rgba="0.6 0.6 0.6 1.0"/></material>
+  <material name="antenna_hg_material"><color rgba="0.85 0.85 0.85 1.0"/></material>
+
+  <!-- ========================================================= -->
+  <!-- Base Chassis with Mesh -->
+  <!-- ========================================================= -->
+  <!-- base_link: pure reference frame, no geometry/mass - matches
+       this project's convention elsewhere (rover_description/urdf/
+       chassis.xacro's own base_link). The original upload duplicated
+       the full chassis mesh on both base_link and body_box_link. -->
+  <link name="base_link"/>
+
+  <joint name="base_to_body_box" type="fixed">
+    <parent link="base_link"/>
+    <child link="body_box_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="body_box_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/body_box.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/body_box.stl"/></geometry>
+    </collision>
+    <inertial>
+      <!-- Bounding-box approximation (mesh's real inertia depends on
+           its actual shape, unknown until the mesh is supplied) -
+           see common.xacro's box_inertia macro. -->
+      <origin xyz="0 0 0"/>
+      <mass value="14.0"/>
+    <inertia ixx="0.18106666666666668" ixy="0.0" ixz="0.0" iyy="0.47833333333333333" iyz="0.0" izz="0.5996666666666667"/>
+  
+    </inertial>
+  </link>
+
+  <!-- ========================================================= -->
+  <!-- Head with Mesh -->
+  <!-- ========================================================= -->
+
+  <joint name="head_j2_joint" type="revolute">
+    <parent link="body_box_link"/>
+    <child link="head_j2_link"/>
+    <origin xyz="0.24 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.0" upper="1.0" effort="10" velocity="1.0"/>
+  </joint>
+
+  <transmission name="head_j2_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="head_j2_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="head_j2_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="head_j2_link">
+    <visual>
+      <origin xyz="-0.24 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/head_j2.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="arm_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/head_j2.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+    <inertia ixx="0.00032" ixy="0.0" ixz="0.0" iyy="0.00032" iyz="0.0" izz="0.00032"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="head_j3_joint" type="revolute">
+    <parent link="head_j2_link"/>
+    <child link="head_j3_link"/>
+    <origin xyz="0 0 0.37" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.0" upper="1.0" effort="4" velocity="1.0"/>
+  </joint>
+
+  <transmission name="head_j3_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="head_j3_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="head_j3_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="head_j3_link">
+    <visual>
+      <origin xyz="-0.24 0 -0.37" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/head_j3.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="head_top_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/head_j3.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+    <inertia ixx="0.00012" ixy="0.0" ixz="0.0" iyy="0.00012" iyz="0.0" izz="0.00012"/>
+  
+    </inertial>
+  </link>
+
+  <!-- ========================================================= -->
+  <!-- Group Differential Steering Wheels Left with Mesh -->
+  <!-- ========================================================= -->
+
+  <joint name="left_differential_joint" type="revolute">
+    <parent link="body_box_link"/>
+    <child link="left_differential_link"/>
+    <origin xyz="0.09 0 -0.265" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.2" upper="0.2" effort="10" velocity="1.0"/>
+  </joint>
+
+  <link name="left_differential_link">
+    <visual>
+      <origin xyz="-0.09 0 0.265" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/left_differential.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_left_chassis_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/left_differential.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+    <inertia ixx="0.0008333333333333335" ixy="0.0" ixz="0.0" iyy="0.0008333333333333335" iyz="0.0" izz="0.0008333333333333335"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="front_left_steering_joint" type="revolute">
+    <parent link="left_differential_link"/>
+    <child link="front_left_steering_link"/>
+    <origin xyz="0.315 0.26 -0.14" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.3" upper="0.3" effort="10" velocity="1.0"/>
+  </joint>
+
+  <transmission name="front_left_steering_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="front_left_steering_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="front_left_steering_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="front_left_steering_link">
+    <visual>
+      <origin xyz="-0.402 -0.258 0.404" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/front_left_steering.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_left_front_steering_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/front_left_steering.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+    <inertia ixx="0.00018" ixy="0.0" ixz="0.0" iyy="0.00018" iyz="0.0" izz="0.00018"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="front_left_wheel_joint" type="continuous">
+    <parent link="front_left_steering_link"/>
+    <child link="front_left_wheel_link"/>
+    <origin xyz="0 0.045 -0.033" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <transmission name="front_left_wheel_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="front_left_wheel_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="front_left_wheel_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="front_left_wheel_link">
+    <visual>
+      <origin xyz="-0.409 -0.3 0.433" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/front_left_wheel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_left_wheel_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/front_left_wheel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="1.1"/>
+    <inertia ixx="0.0025575000000000003" ixy="0.0" ixz="0.0" iyy="0.0025575000000000003" iyz="0.0" izz="0.004455"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="left_bogie_joint" type="revolute">
+    <parent link="left_differential_link"/>
+    <child link="left_bogie_link"/>
+    <origin xyz="-0.265 0.195 -0.041" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.3" upper="0.3" effort="10" velocity="1.0"/>
+  </joint>
+
+  <transmission name="left_bogie_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="left_bogie_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="left_bogie_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="left_bogie_link">
+    <visual>
+      <origin xyz="0.175 -0.190 0.308" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/left_bogie.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="left_bogie_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/left_bogie.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.6"/>
+    <inertia ixx="0.00064" ixy="0.0" ixz="0.0" iyy="0.0014449999999999999" iyz="0.0" izz="0.0014449999999999999"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="middle_left_wheel_joint" type="continuous">
+    <parent link="left_bogie_link"/>
+    <child link="middle_left_wheel_link"/>
+    <origin xyz="0.178 0.06 -0.13" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <transmission name="middle_left_wheel_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="middle_left_wheel_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="middle_left_wheel_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="middle_left_wheel_link">
+    <visual>
+      <origin xyz="0 -0.22 0.435" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/middle_left_wheel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_left_middle_chariot_center_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/middle_left_wheel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="1.1"/>
+    <inertia ixx="0.0025575000000000003" ixy="0.0" ixz="0.0" iyy="0.0025575000000000003" iyz="0.0" izz="0.004455"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="rear_left_steering_joint" type="revolute">
+    <parent link="left_bogie_link"/>
+    <child link="rear_left_steering_link"/>
+    <origin xyz="-0.203 0.09 -0.1" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.3" upper="0.3" effort="10" velocity="1.0"/>
+  </joint>
+
+  <transmission name="rear_left_steering_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="rear_left_steering_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="rear_left_steering_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="rear_left_steering_link">
+    <visual>
+      <origin xyz="0.38 -0.28 0.408" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/rear_left_steering.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_left_middle_chariot_center_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/rear_left_steering.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+    <inertia ixx="0.00018" ixy="0.0" ixz="0.0" iyy="0.00018" iyz="0.0" izz="0.00018"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="rear_left_wheel_joint" type="continuous">
+    <parent link="rear_left_steering_link"/>
+    <child link="rear_left_wheel_link"/>
+    <origin xyz="0 0.048 -0.025" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <transmission name="rear_left_wheel_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="rear_left_wheel_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="rear_left_wheel_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="rear_left_wheel_link">
+    <visual>
+      <origin xyz="0.38 -0.32 0.44" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/rear_left_wheel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_left_middle_chariot_center_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/rear_left_wheel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="1.1"/>
+    <inertia ixx="0.0025575000000000003" ixy="0.0" ixz="0.0" iyy="0.0025575000000000003" iyz="0.0" izz="0.004455"/>
+  
+    </inertial>
+  </link>
+
+  <!-- ========================================================= -->
+  <!-- Group Differential Steering Wheels Right with Mesh -->
+  <!-- (mirrored from Left - the original upload had every joint in
+       this whole section as type="fixed" with zero-width limits,
+       i.e. permanently rigid; this side literally could not move as
+       uploaded, unlike the left. Fixed to match the left side's real
+       joint types/limits/transmissions.) -->
+  <!-- ========================================================= -->
+
+  <joint name="right_differential_joint" type="revolute">
+    <parent link="body_box_link"/>
+    <child link="right_differential_link"/>
+    <origin xyz="0.09 0 -0.265" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.2" upper="0.2" effort="10" velocity="1.0"/>
+  </joint>
+
+  <transmission name="right_differential_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="right_differential_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="right_differential_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="right_differential_link">
+    <visual>
+      <origin xyz="-0.09 0 0.265" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/right_differential.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_right_chassis_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/right_differential.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+    <inertia ixx="0.0008333333333333335" ixy="0.0" ixz="0.0" iyy="0.0008333333333333335" iyz="0.0" izz="0.0008333333333333335"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="front_right_steering_joint" type="revolute">
+    <parent link="right_differential_link"/>
+    <child link="front_right_steering_link"/>
+    <origin xyz="0.315 -0.26 -0.14" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.3" upper="0.3" effort="10" velocity="1.0"/>
+  </joint>
+
+  <transmission name="front_right_steering_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="front_right_steering_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="front_right_steering_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="front_right_steering_link">
+    <visual>
+      <origin xyz="-0.402 0.258 0.404" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/front_right_steering.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_right_front_steering_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/front_right_steering.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+    <inertia ixx="0.00018" ixy="0.0" ixz="0.0" iyy="0.00018" iyz="0.0" izz="0.00018"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="front_right_wheel_joint" type="continuous">
+    <parent link="front_right_steering_link"/>
+    <child link="front_right_wheel_link"/>
+    <origin xyz="0 -0.045 -0.033" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <transmission name="front_right_wheel_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="front_right_wheel_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="front_right_wheel_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="front_right_wheel_link">
+    <visual>
+      <origin xyz="-0.409 0.3 0.433" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/front_right_wheel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_right_wheel_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/front_right_wheel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="1.1"/>
+    <inertia ixx="0.0025575000000000003" ixy="0.0" ixz="0.0" iyy="0.0025575000000000003" iyz="0.0" izz="0.004455"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="right_bogie_joint" type="revolute">
+    <parent link="right_differential_link"/>
+    <child link="right_bogie_link"/>
+    <origin xyz="-0.265 -0.195 -0.041" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.3" upper="0.3" effort="10" velocity="1.0"/>
+  </joint>
+
+  <transmission name="right_bogie_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="right_bogie_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="right_bogie_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="right_bogie_link">
+    <visual>
+      <origin xyz="0.175 0.190 0.308" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/right_bogie.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="right_bogie_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/right_bogie.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.6"/>
+    <inertia ixx="0.00064" ixy="0.0" ixz="0.0" iyy="0.0014449999999999999" iyz="0.0" izz="0.0014449999999999999"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="middle_right_wheel_joint" type="continuous">
+    <parent link="right_bogie_link"/>
+    <child link="middle_right_wheel_link"/>
+    <origin xyz="0.178 -0.06 -0.13" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <transmission name="middle_right_wheel_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="middle_right_wheel_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="middle_right_wheel_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="middle_right_wheel_link">
+    <visual>
+      <origin xyz="0 0.22 0.435" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/middle_right_wheel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_right_middle_chariot_center_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/middle_right_wheel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="1.1"/>
+    <inertia ixx="0.0025575000000000003" ixy="0.0" ixz="0.0" iyy="0.0025575000000000003" iyz="0.0" izz="0.004455"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="rear_right_steering_joint" type="revolute">
+    <parent link="right_bogie_link"/>
+    <child link="rear_right_steering_link"/>
+    <origin xyz="-0.203 -0.09 -0.1" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.3" upper="0.3" effort="10" velocity="1.0"/>
+  </joint>
+
+  <transmission name="rear_right_steering_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="rear_right_steering_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="rear_right_steering_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="rear_right_steering_link">
+    <visual>
+      <origin xyz="0.38 0.28 0.408" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/rear_right_steering.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_right_middle_chariot_center_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/rear_right_steering.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+    <inertia ixx="0.00018" ixy="0.0" ixz="0.0" iyy="0.00018" iyz="0.0" izz="0.00018"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="rear_right_wheel_joint" type="continuous">
+    <parent link="rear_right_steering_link"/>
+    <child link="rear_right_wheel_link"/>
+    <origin xyz="0 -0.048 -0.025" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <transmission name="rear_right_wheel_transmission">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="rear_right_wheel_joint">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="rear_right_wheel_motor">
+      <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <link name="rear_right_wheel_link">
+    <visual>
+      <origin xyz="0.38 0.32 0.44" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/rear_right_wheel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="group_right_middle_chariot_center_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/rear_right_wheel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="1.1"/>
+    <inertia ixx="0.0025575000000000003" ixy="0.0" ixz="0.0" iyy="0.0025575000000000003" iyz="0.0" izz="0.004455"/>
+  
+    </inertial>
+  </link>
+
+  <!-- ================================================================================ -->
+  <!-- Note: the original upload also had a second, separate set of "_trans"-suffixed
+       transmissions duplicating several of the joints already given transmissions
+       above (e.g. front_left_wheel_trans duplicating front_left_wheel_transmission),
+       plus two entirely empty macro definitions (steered_wheel/fixed_wheel) whose 6
+       invocations were no-ops. Both removed as dead/duplicate content - every joint
+       already has exactly one transmission, declared alongside its joint above. -->
+  <!-- ================================================================================ -->
+
+  <!-- ================================================================== -->
+  <!-- Arm link with Meshes -->
+  <!-- ================================================================== -->
+
+  <joint name="arm_j1_joint" type="revolute">
+    <parent link="body_box_link"/>
+    <child link="arm_j1_link"/>
+    <origin xyz="0.3 0.09 -0.2" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.0" upper="1.0" effort="8" velocity="1.5"/>
+  </joint>
+
+  <link name="arm_j1_link">
+    <visual>
+      <origin xyz="-0.285 -0.095 0.2" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/arm_j1.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="arm_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/arm_j1.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.4"/>
+    <inertia ixx="0.0004266666666666667" ixy="0.0" ixz="0.0" iyy="0.0004266666666666667" iyz="0.0" izz="0.0004266666666666667"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="arm_j2_joint" type="revolute">
+    <parent link="arm_j1_link"/>
+    <child link="arm_j2_link"/>
+    <origin xyz="0.05 0 -0.005" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="1.0" effort="10" velocity="1.0"/>
+  </joint>
+
+  <link name="arm_j2_link">
+    <visual>
+      <origin xyz="-0.32 -0.095 0.205" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/arm_j2.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="arm_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/arm_j2.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+    <inertia ixx="0.002129166666666667" ixy="0.0" ixz="0.0" iyy="0.002129166666666667" iyz="0.0" izz="0.000225"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="arm_j3_joint" type="revolute">
+    <parent link="arm_j2_link"/>
+    <child link="arm_j3_link"/>
+    <origin xyz="0.275 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="10" velocity="1.0"/>
+  </joint>
+
+  <link name="arm_j3_link">
+    <visual>
+      <origin xyz="-0.575 -0.1 0.205" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/arm_j3.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="arm_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/arm_j3.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.4"/>
+    <inertia ixx="0.0013958333333333338" ixy="0.0" ixz="0.0" iyy="0.0013958333333333338" iyz="0.0" izz="0.00012500000000000003"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="arm_j4_joint" type="revolute">
+    <parent link="arm_j3_link"/>
+    <child link="arm_j4_link"/>
+    <origin xyz="0.235 -0.021 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="4" velocity="1.5"/>
+  </joint>
+
+  <link name="arm_j4_link">
+    <visual>
+      <origin xyz="-0.8 -0.08 0.205" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/arm_j4.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="arm_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/arm_j4.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.25"/>
+    <inertia ixx="0.00019375" ixy="0.0" ixz="0.0" iyy="0.00019375" iyz="0.0" izz="0.00005"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="arm_j5_joint" type="revolute">
+    <parent link="arm_j4_link"/>
+    <child link="arm_j5_link"/>
+    <origin xyz="0 -0.06 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="3" velocity="2.0"/>
+  </joint>
+
+  <link name="arm_j5_link">
+    <visual>
+      <origin xyz="-0.8 0 0.205" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/arm_j5.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="arm_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/arm_j5.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.15"/>
+    <inertia ixx="0.00007340000000000001" ixy="0.0" ixz="0.0" iyy="0.00007340000000000001" iyz="0.0" izz="0.000024299999999999994"/>
+  
+    </inertial>
+  </link>
+
+  <!-- Arm transmissions - joint references fixed to match the actual
+       joint names above (arm_j1_joint, not arm_j1), and the
+       duplicate "arm_j_trans" name (originally used for both J3 and
+       J4) split into arm_j3_trans / arm_j4_trans. -->
+  <transmission name="arm_j1_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_j1_joint"/>
+    <actuator name="arm_j1_motor"/>
+  </transmission>
+
+  <transmission name="arm_j2_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_j2_joint"/>
+    <actuator name="arm_j2_motor"/>
+  </transmission>
+
+  <transmission name="arm_j3_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_j3_joint"/>
+    <actuator name="arm_j3_motor"/>
+  </transmission>
+
+  <transmission name="arm_j4_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_j4_joint"/>
+    <actuator name="arm_j4_motor"/>
+  </transmission>
+
+  <transmission name="arm_j5_trans">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_j5_joint"/>
+    <actuator name="arm_j5_motor"/>
+  </transmission>
+
+  <!-- ========================================================= -->
+  <!-- Solar Panels (static - not deployable/steerable) -->
+  <!-- ========================================================= -->
+
+  <joint name="front_left_panel_joint" type="fixed">
+    <parent link="body_box_link"/>
+    <child link="front_left_panel_link"/>
+    <origin xyz="0.12 0.20 0.08" rpy="0 0 0"/>
+  </joint>
+
+  <link name="front_left_panel_link">
+    <visual>
+      <origin xyz="-0.1 -0.2 -0.08" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/front_left_panel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="solar_panel_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/front_left_panel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+    <inertia ixx="0.0004916000000000001" ixy="0.0" ixz="0.0" iyy="0.0012116" iyz="0.0" izz="0.0017000000000000001"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="rear_left_panel_joint" type="fixed">
+    <parent link="body_box_link"/>
+    <child link="rear_left_panel_link"/>
+    <origin xyz="-0.12 0.20 0.08" rpy="0 0 0"/>
+  </joint>
+
+  <link name="rear_left_panel_link">
+    <visual>
+      <origin xyz="0.128 -0.190 -0.0775" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/rear_left_panel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="solar_panel_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/rear_left_panel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+    <inertia ixx="0.0004916000000000001" ixy="0.0" ixz="0.0" iyy="0.0012116" iyz="0.0" izz="0.0017000000000000001"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="front_right_panel_joint" type="fixed">
+    <parent link="body_box_link"/>
+    <child link="front_right_panel_link"/>
+    <origin xyz="0.12 -0.20 0.08" rpy="0 0 0"/>
+  </joint>
+
+  <link name="front_right_panel_link">
+    <visual>
+      <origin xyz="-0.1 0.2 -0.075" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/front_right_panel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="solar_panel_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/front_right_panel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+    <inertia ixx="0.0004916000000000001" ixy="0.0" ixz="0.0" iyy="0.0012116" iyz="0.0" izz="0.0017000000000000001"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="rear_right_panel_joint" type="fixed">
+    <parent link="body_box_link"/>
+    <child link="rear_right_panel_link"/>
+    <origin xyz="-0.12 -0.20 0.08" rpy="0 0 0"/>
+  </joint>
+
+  <link name="rear_right_panel_link">
+    <visual>
+      <origin xyz="0.128 0.190 -0.0775" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/rear_right_panel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="solar_panel_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/rear_right_panel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+    <inertia ixx="0.0004916000000000001" ixy="0.0" ixz="0.0" iyy="0.0012116" iyz="0.0" izz="0.0017000000000000001"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="rear_middle_panel_joint" type="fixed">
+    <parent link="body_box_link"/>
+    <child link="rear_middle_panel_link"/>
+    <origin xyz="-0.22 0 0.08" rpy="0 0 0"/>
+  </joint>
+
+  <link name="rear_middle_panel_link">
+    <visual>
+      <origin xyz="0.2 0 -0.08" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/rear_middle_panel.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="solar_panel_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/rear_middle_panel.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.15"/>
+    <inertia ixx="0.00018079999999999998" ixy="0.0" ixz="0.0" iyy="0.00024580000000000007" iyz="0.0" izz="0.00042500000000000003"/>
+  
+    </inertial>
+  </link>
+
+  <!-- ========================================================= -->
+  <!-- Sensors and additional components -->
+  <!-- ========================================================= -->
+
+  <!-- Antenna High Gain -->
+  <joint name="ant_j1_joint" type="revolute">
+    <parent link="body_box_link"/>
+    <child link="ant_j1_link"/>
+    <origin xyz="-0.24 0.26 -0.02" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.5" upper="0.5" effort="1.0" velocity="1.0"/>
+  </joint>
+
+  <link name="ant_j1_link">
+    <visual>
+      <origin xyz="0.24 -0.26 0.02" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/ant_j1.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="antenna_base_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/ant_j1.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.15"/>
+    <inertia ixx="0.000059999999999999995" ixy="0.0" ixz="0.0" iyy="0.000059999999999999995" iyz="0.0" izz="0.00003"/>
+  
+    </inertial>
+  </link>
+
+  <joint name="ant_j2_joint" type="revolute">
+    <parent link="ant_j1_link"/>
+    <child link="ant_j2_link"/>
+    <origin xyz="0 0.082 0.061" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="0.5" effort="0.5" velocity="1.0"/>
+  </joint>
+
+  <link name="ant_j2_link">
+    <visual>
+      <origin xyz="0.24 -0.34 -0.042" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://rover_description/meshes/ant_j2.stl" scale="0.68 0.68 0.68"/>
+      </geometry>
+      <material name="antenna_hg_material"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="package://rover_description/meshes/ant_j2.stl"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.1"/>
+    <inertia ixx="0.00004333333333333333" ixy="0.0" ixz="0.0" iyy="0.00004333333333333333" iyz="0.0" izz="0.00008"/>
+  
+    </inertial>
+  </link>
+
+  <!-- IMU link (attached to base) -->
+  <link name="imu_link">
+    <visual><origin xyz="0 0 0"/><geometry><box size="0.02 0.02 0.01"/></geometry></visual>
+    <inertial><mass value="0.02"/>
+    <inertia ixx="8.333333333333334e-7" ixy="0.0" ixz="0.0" iyy="8.333333333333334e-7" iyz="0.0" izz="0.0000013333333333333336"/>
+  </inertial>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="body_box_link"/>
+    <child link="imu_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Kinect RGB-D camera -->
+  <link name="camera_link">
+    <visual><origin xyz="0 0 0"/><geometry><box size="0.06 0.04 0.04"/></geometry></visual>
+    <inertial><mass value="0.15"/>
+    <inertia ixx="0.00004" ixy="0.0" ixz="0.0" iyy="0.000065" iyz="0.0" izz="0.000065"/>
+  </inertial>
+  </link>
+
+  <joint name="camera_mount" type="fixed">
+    <parent link="body_box_link"/>
+    <child link="camera_link"/>
+    <origin xyz="0.2 0 0.1" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ========================================================= -->
+  <!-- Gazebo plugins -->
+  <!-- ========================================================= -->
+  <!-- Left as reference/incomplete on purpose - reconciling these
+       joint names (and picking an actual drive controller) against
+       this project's real rover_base firmware protocol is exactly
+       the "configuration" work explicitly deferred for this pass. -->
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_drive.so">
+      <ros>
+        <remapping>cmd_vel:=cmd_vel</remapping>
+      </ros>
+      <updateRate>50</updateRate>
+      <leftJoint>front_left_wheel_joint middle_left_wheel_joint rear_left_wheel_joint</leftJoint>
+      <rightJoint>front_right_wheel_joint middle_right_wheel_joint rear_right_wheel_joint</rightJoint>
+    </plugin>
+  </gazebo>
+
+  <gazebo reference="front_left_wheel_link"><mu1>1.2</mu1><mu2>1.2</mu2></gazebo>
+  <gazebo reference="front_right_wheel_link"><mu1>1.2</mu1><mu2>1.2</mu2></gazebo>
+  <gazebo reference="middle_left_wheel_link"><mu1>1.2</mu1><mu2>1.2</mu2></gazebo>
+  <gazebo reference="middle_right_wheel_link"><mu1>1.2</mu1><mu2>1.2</mu2></gazebo>
+  <gazebo reference="rear_left_wheel_link"><mu1>1.2</mu1><mu2>1.2</mu2></gazebo>
+  <gazebo reference="rear_right_wheel_link"><mu1>1.2</mu1><mu2>1.2</mu2></gazebo>
+
+</robot>
